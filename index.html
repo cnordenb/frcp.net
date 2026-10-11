@@ -4,7 +4,7 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Fresh Random Civ Picker</title>
-<meta name="description" content="Draw a fresh random civilisation for Age of Empires II. Every civ in your pool comes up once before any civ repeats.">
+<meta name="description" content="Draw a fresh random civilisation for Age of Empires II. Every enabled civ will be drawn once before any civ repeats.">
 <link rel="icon" href="favicon.ico">
 <style>
   :root {
@@ -576,7 +576,7 @@
       <fieldset class="group"><legend>When the page opens</legend>
         <label class="row"><input type="checkbox" name="drawOnLoad">Draw a civ</label>
         <label class="row"><input type="checkbox" name="newRoundOnVisit">Start a new round</label>
-        <p class="hint">Your pool and log are always kept.</p>
+        <p class="hint">Civ pool and draw log are always kept.</p>
       </fieldset>
       <fieldset class="group span2"><legend>Hotkeys</legend>
         <div class="inline">
@@ -606,7 +606,7 @@
       <p><strong>Fresh Random Civ Picker</strong>, web version <span id="aboutVersion"></span></p>
       <p>Created by Carl Nordenbrink, alias <a href="https://www.youtube.com/hjoerleif" target="_blank" rel="noopener">Hjörleif</a>.
         Also available as a <a href="https://github.com/cnordenb/Fresh-Random-Civ-Picker_GUI/releases" target="_blank" rel="noopener">desktop app</a>.</p>
-      <p>Your civ pool, draw log and settings are saved in this browser only. Share links carry a copy of your pool, and of this round's draws if you choose.</p>
+      <p>Custom civ pool, draw log and user settings are saved in this browser only. Share links carry a copy of the custom civ pool, and optionally of this round's draws.</p>
       <p class="hint">Age of Empires II © Microsoft Corporation. Fresh Random Civ Picker was created under Microsoft's
         "<a href="https://www.xbox.com/en-US/developers/rules" target="_blank" rel="noopener">Game Content Usage Rules</a>"
         using assets from Age of Empires II and Age of Empires II: Definitive Edition, and it is not endorsed by or affiliated with Microsoft.</p>
@@ -636,7 +636,7 @@
   <form data-closes>
     <div class="dlg-title"><h2 id="shareTitle">Share</h2><button type="button" class="dlg-x" data-close aria-label="Close">✕</button></div>
     <div class="dlg-body share">
-      <p>Anyone who opens one of these links gets your civ pool. Your log of past rounds isn't included.</p>
+      <p>Anyone who opens one of these links gets this civ pool. The log of past rounds isn't included.</p>
       <div class="share-row"><label for="sharePool">Share pool</label><input type="text" id="sharePool" readonly>
         <button type="button" class="btn" data-copy="sharePool">Copy</button></div>
       <div class="share-row"><label for="shareRound">Share pool + draws</label><input type="text" id="shareRound" readonly>
@@ -672,7 +672,7 @@
         <dt>Civ pool</dt><dd id="pvPool"></dd>
         <dt>This round</dt><dd id="pvRound"></dd>
       </dl>
-      <p>Loading it replaces your civ pool and current round. Your log of past rounds stays.</p>
+      <p>Loading it replaces the current civ pool and current round. The log of past rounds is still kept.</p>
     </div>
     <div class="dlg-buttons">
       <button type="submit" class="btn" autofocus>Load Link</button>
@@ -1679,7 +1679,7 @@ class MersenneTwister {
     const optionsKey = keyLabel("options");
     $("optionsBig").dataset.tip = `Opens options\nHotkey: Q / ${optionsKey}`;
     $("techBtn").dataset.tip = `Opens the tech tree${cur ? " for the " + cur.name : ""}\nHotkey: T (Draw tab only) / ${keyLabel("techtree")}`;
-    $("shareBtn").dataset.tip = `Copies a share link with your civ pool and this round's draws\nHotkey: ${keyLabel("copyLink")}`;
+    $("shareBtn").dataset.tip = `Copies a share link with the currently selected civ pool and this round's draws\nHotkey: ${keyLabel("copyLink")}`;
     for (const k of document.querySelectorAll("kbd[data-key]")) setText(k, keyLabel(k.dataset.key));
     if (tipTarget) setText(els.tip, tipTarget.dataset.tip || "");
   }
