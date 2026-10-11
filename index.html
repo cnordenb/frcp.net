@@ -283,25 +283,43 @@
     color-scheme: light; font: 12px/1.4 var(--ui); box-shadow: 0 12px 36px rgba(0, 0, 0, .35);
   }
   dialog.win::backdrop { background: rgba(0, 0, 0, .15); }
-  /* Parchment panels for the options, hotkeys, about, lobby and link dialogs. The padding keeps the content
-     inside the panel's frame, and a drop shadow follows the panel's transparent corners where a box shadow
-     wouldn't. */
-  :root:not([data-simple]) :is(#dlgOptions, #dlgHotkeys, #dlgAbout, #dlgLobby, #dlgShare, #dlgOpen) {
+  /* Every dialog is a parchment panel. The padding keeps the content inside the panel's frame, and a drop shadow
+     follows the panel's transparent corners where a box shadow wouldn't. */
+  :root:not([data-simple]) dialog.win {
+    --slice: 38px;
     padding: 13px; border: 0; box-shadow: none; filter: drop-shadow(0 12px 24px rgba(0, 0, 0, .35));
-    background: center / 100% 100% no-repeat;
+    background: none;
   }
-  :root:not([data-simple]) #dlgOptions { background-image: url("images/ui/options_panel.webp"); }
-  :root:not([data-simple]) #dlgHotkeys { background-image: url("images/ui/hotkeys_panel.webp"); }
-  :root:not([data-simple]) #dlgAbout { background-image: url("images/ui/about_panel.webp"); }
-  :root:not([data-simple]) #dlgLobby { background-image: url("images/ui/joinlobby_panel.webp"); }
-  :root:not([data-simple]) #dlgShare { background-image: url("images/ui/share_panel.webp"); }
-  :root:not([data-simple]) #dlgOpen { background-image: url("images/ui/open_link_panel.webp"); }
-  :root:not([data-simple]) :is(#dlgOptions, #dlgHotkeys, #dlgAbout, #dlgLobby, #dlgShare, #dlgOpen) .dlg-title { background: none; }
+  /* The frame is built from the 64 px nine-slice parts, each drawn --slice px square. An edge would tile the whole
+     length of its side and show through the corners' transparent parts, so each edge is clipped to the padding box
+     of a layer whose transparent border covers the corners: ::before draws the corners, the top and bottom edges
+     and the inlay, and ::after draws the side edges. */
+  :root:not([data-simple]) dialog.win::before, :root:not([data-simple]) dialog.win::after {
+    content: ""; position: absolute; z-index: -1; inset: 0; pointer-events: none;
+  }
+  :root:not([data-simple]) dialog.win::before {
+    border-inline: var(--slice) solid transparent;
+    background:
+      url("images/ui/nineslice/boxstyle3_angle_topleft.png") 0 0 / var(--slice) no-repeat border-box,
+      url("images/ui/nineslice/boxstyle3_angle_topright.png") 100% 0 / var(--slice) no-repeat border-box,
+      url("images/ui/nineslice/boxstyle3_angle_bottomleft.png") 0 100% / var(--slice) no-repeat border-box,
+      url("images/ui/nineslice/boxstyle3_angle_bottomright.png") 100% 100% / var(--slice) no-repeat border-box,
+      url("images/ui/nineslice/boxstyle3_edge_top.png") 0 0 / var(--slice) repeat-x padding-box,
+      url("images/ui/nineslice/boxstyle3_edge_bottom.png") 0 100% / var(--slice) repeat-x padding-box,
+      url("images/ui/nineslice/boxstyle3_inlay.png") 0 var(--slice) / 100% calc(100% - 2 * var(--slice)) no-repeat padding-box;
+  }
+  :root:not([data-simple]) dialog.win::after {
+    border-block: var(--slice) solid transparent;
+    background:
+      url("images/ui/nineslice/boxstyle3_edge_left.png") 0 0 / var(--slice) repeat-y padding-box,
+      url("images/ui/nineslice/boxstyle3_edge_right.png") 100% 0 / var(--slice) repeat-y padding-box;
+  }
+  :root:not([data-simple]) dialog.win .dlg-title { background: none; }
   :root:not([data-simple]) #dlgOptions .group { border-color: rgba(60, 40, 20, .35); }
-  /* Hint, link and error colours dark enough to read on the panel's tan */
-  :root:not([data-simple]) :is(#dlgOptions, #dlgHotkeys, #dlgAbout, #dlgLobby, #dlgShare) .hint { color: #3d2c1c; }
-  :root:not([data-simple]) #dlgAbout a { color: #08306a; }
-  :root:not([data-simple]) :is(#dlgLobby, #dlgOpen) .err { color: #680a0a; }
+  /* Hint, label, link and error colours dark enough to read on the panel's tan */
+  :root:not([data-simple]) dialog.win :is(.hint, .facts dt) { color: #3d2c1c; }
+  :root:not([data-simple]) dialog.win a { color: #08306a; }
+  :root:not([data-simple]) dialog.win .err { color: #680a0a; }
   .dlg-title { display: flex; align-items: center; justify-content: space-between; height: 30px; padding-left: 10px; background: #fff; user-select: none; -webkit-user-select: none; }
   .dlg-title h2 { margin: 0; font: inherit; }
   .dlg-x { width: 46px; height: 30px; border: 0; background: none; font: 13px var(--ui); color: #000; cursor: pointer; }
@@ -1076,7 +1094,7 @@ class MersenneTwister {
     try { a.currentTime = 0; } catch { /* not loaded yet */ }
     const p = a.play();
     if (p) p.catch(() => {});
-  } //test
+  }
   const uiUrl = (name) => `sounds/ui/${UI_SOUNDS[name]}.webm`;
   function sfx(name) {
     if (settings.uiSounds) playUrl(uiUrl(name));
@@ -2122,12 +2140,13 @@ class MersenneTwister {
   // Load the images first shown on a hover, press, tab switch or dialog up front, so they don't flicker in.
   if (!SIMPLE) {
     const early = ["tab1_hover", "tab2_hover", "button_pressed", "logpanel",
-      "options_panel", "hotkeys_panel", "about_panel", "joinlobby_panel", "share_panel", "open_link_panel",
       "link_textfield", "lobbycode_textfield",
       "checkbox_unticked", "checkbox_ticked", "checkbox_unticked_pressed", "checkbox_ticked_pressed",
       "dropdownbutton", "dropdownbutton_pressed", "xbutton", "xbutton_pressed", "external",
       "cursor", "pointing_cursor", "slider_off", "slider_on", "slider_knob"];
     for (const t of early) new Image().src = `images/ui/${t}.webp`;
+    for (const t of ["angle_topleft", "angle_topright", "angle_bottomleft", "angle_bottomright",
+      "edge_top", "edge_bottom", "edge_left", "edge_right", "inlay"]) new Image().src = `images/ui/nineslice/boxstyle3_${t}.png`;
   }
   bind();
 
