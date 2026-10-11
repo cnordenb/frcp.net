@@ -4,3 +4,5 @@ Fresh Random Civ Picker in the browser. Ported to HTML, CSS and JavaScript from 
 
 New in this version of FRCP: share civ pool with URL link.
 - Example, a civ pool of AoK civs: https://frcp.net/#p=1Cg4QBAgiAl8
+
+Assets amount to over 5mb and the site can take over a second to load. A simple 72kb version is available at [frcp.net/simple](https://frcp.net/simple) and it should load about 10x as fast.
