@@ -1,0 +1,487 @@
+:root {
+  --page: #dfe4ea;
+  --page-ink: #2b333d;
+  --frame: #8d97a3;
+  --face: #f0f0f0;
+  --line: #d9d9d9;
+  --accent: #0078d7;
+  --ui: "Segoe UI", Tahoma, system-ui, -apple-system, sans-serif;
+}
+@media (prefers-color-scheme: dark) {
+  :root {
+    --page: #1c2026;
+    --page-ink: #dfe4ea;
+    --frame: #4b5560;
+  }
+}
+/* Parchment theme: Georgia for all text except the blackletter buttons. */
+:root:not([data-simple]) { --ui: Georgia, "Times New Roman", serif; }
+*, *::before, *::after { box-sizing: border-box; }
+[hidden] { display: none !important; }
+html { background: var(--page); }
+body {
+  margin: 0; min-height: 100vh; min-width: 610px; padding: 16px;
+  display: flex; flex-direction: column; align-items: center; justify-content: center;
+  background: var(--page); color: var(--page-ink); font: 12px/1.35 var(--ui);
+}
+.noscript, #mobileNote { margin: 0; padding: 0 16px; font-size: 18px; text-align: center; }
+#mobileNote { display: none; }
+/* @media (pointer: coarse) {
+  body { min-width: 0; }
+  #app { display: none; }
+  #mobileNote { display: block; }
+} */
+
+/* Window replica */
+.window {
+  width: 536px; border: 1px solid var(--frame); background: #fff; color: #000; color-scheme: light;
+  box-shadow: 0 10px 32px rgba(0, 0, 0, .22), 0 2px 6px rgba(0, 0, 0, .12);
+  user-select: none; -webkit-user-select: none;
+}
+/* The parchment covers the whole window. The padding keeps the content inside its burnt edge,
+   and the parchment's own shadow replaces the window border and shadow. */
+:root:not([data-simple]) .window {
+  width: 578px; padding: 22px; border: 0; box-shadow: none;
+  background: url("images/ui/background.webp") center / 100% 100% no-repeat;
+}
+:root:not([data-simple]) .client { background: transparent; }
+/* Inside the parchment window and its dialogs, the arrow and the pointing hand are the game's cursors. Rules for
+   an arrow or a hand use var(--arrow, default) and var(--hand, pointer), so simple mode and the page around the
+   window keep the system cursors. */
+:root:not([data-simple]) :is(.window, dialog.win) {
+  --arrow: url("images/ui/cursor.webp") 0 0, default;
+  --hand: url("images/ui/pointing_cursor.webp") 1 0, pointer;
+  cursor: var(--arrow);
+}
+.titlebar { height: 30px; display: flex; align-items: center; justify-content: space-between; padding-left: 10px; font: 12px var(--ui); }
+.titlebar h1 { margin: 0; font: inherit; }
+
+.menubar { position: relative; z-index: 20; display: flex; height: 20px; }
+.menu { position: relative; }
+.menu-title {
+  height: 20px; padding: 0 7px; border: 1px solid transparent; background: none;
+  font: inherit; color: inherit; cursor: var(--arrow, default);
+}
+.menu-title:hover { background: #e5f3ff; border-color: #cce8ff; }
+.menu.open .menu-title { background: #cce8ff; border-color: #99d1ff; }
+.menu-title:focus-visible { outline: 1px dotted #000; outline-offset: -3px; }
+.menu-list {
+  position: absolute; top: 20px; left: 0; min-width: 250px; padding: 2px;
+  background: #f2f2f2; border: 1px solid #ccc; box-shadow: 2px 2px 3px rgba(0, 0, 0, .25);
+}
+.menu-list > button, .menu-list > a {
+  display: grid; grid-template-columns: 1fr auto; gap: 24px; width: 100%; padding: 3px 18px 3px 30px;
+  border: 0; background: none; font: inherit; color: #000; text-align: left; text-decoration: none;
+  white-space: nowrap; cursor: var(--arrow, default);
+}
+.menu-list > button:hover, .menu-list > a:hover,
+.menu-list > button:focus-visible, .menu-list > a:focus-visible { background: #91c9f7; outline: none; }
+.menu-list kbd { font: inherit; }
+.menu-list hr { margin: 3px 2px 3px 30px; border: 0; border-top: 1px solid #d7d7d7; }
+/* Parchment menus: dark brown with light text, and gold with dark text on the hovered item. The open
+   menu's title matches its list, and a hovered title is gold like an item. */
+:root:not([data-simple]) .menu-title:hover { background: #dccb70; border-color: transparent; }
+:root:not([data-simple]) .menu.open .menu-title { background: #65523b; border-color: #65523b; color: #f1deae; }
+:root:not([data-simple]) .menu-list { background: #65523b; border-color: #3d2c1c; }
+:root:not([data-simple]) .menu-list > button, :root:not([data-simple]) .menu-list > a { color: #f1deae; }
+:root:not([data-simple]) .menu-list > button:hover, :root:not([data-simple]) .menu-list > a:hover,
+:root:not([data-simple]) .menu-list > button:focus-visible, :root:not([data-simple]) .menu-list > a:focus-visible { background: #dccb70; color: #000; }
+:root:not([data-simple]) .menu-list hr { border-top-color: rgba(241, 222, 174, .3); }
+/* Items that open another site get the external icon in their left margin. It's drawn in the menu
+   text's colour, so it turns black with the text on the hovered item. */
+:root:not([data-simple]) :is(.menu-list > a, #menu-civs > [data-act="techtree"]) { position: relative; }
+:root:not([data-simple]) :is(.menu-list > a, #menu-civs > [data-act="techtree"])::before {
+  content: ""; position: absolute; left: 9px; top: 50%; width: 12px; height: 12px; margin-top: -6px;
+  background: url("images/ui/external.webp") center / contain no-repeat;
+}
+:root:not([data-simple]) :is(.menu-list > a, #menu-civs > [data-act="techtree"]):is(:hover, :focus-visible)::before { filter: brightness(0); }
+
+.client { position: relative; width: 534px; height: 511px; background: #fff; overflow: hidden; }
+.frame { position: absolute; left: 0; right: 0; top: 21px; bottom: 0; border: 1px solid var(--line); }
+/* Images set in CSS are scoped to :not([data-simple]), so simple mode never loads them. */
+:root:not([data-simple]) .frame { border-color: rgba(90, 60, 30, .35); }
+.tabstrip { position: absolute; z-index: 3; left: 2px; top: 0; display: flex; }
+.tab {
+  position: relative; top: 2px; height: 19px; margin-right: -1px; padding: 0 6px;
+  border: 1px solid var(--line); border-bottom: 0; background: #f0f0f0;
+  font: inherit; color: #000; cursor: var(--arrow, default);
+}
+.tab:hover { background: #d8eaf9; }
+.tab[aria-selected="true"] { z-index: 1; top: 0; height: 22px; padding: 0 8px; background: #fff; }
+.tab:focus-visible { outline: 1px dotted #000; outline-offset: -4px; }
+/* Parchment tabs: Draw Civ and Civ Pool use tab1, Log uses tab2. There's no selected image,
+   so the selected tab is bold at full brightness and the others are dimmed. */
+:root:not([data-simple]) .tab {
+  top: 0; width: 70px; height: 25px; margin-right: -2px; padding: 0 0 3px; border: 0;
+  background: url("images/ui/tab1_normal.webp") center / 100% 100% no-repeat; filter: brightness(.88);
+}
+:root:not([data-simple]) #tab-1 { background-image: url("images/ui/tab2_normal.webp"); }
+:root:not([data-simple]) .tab:hover { background-image: url("images/ui/tab1_hover.webp"); }
+:root:not([data-simple]) #tab-1:hover { background-image: url("images/ui/tab2_hover.webp"); }
+:root:not([data-simple]) .tab[aria-selected="true"] { z-index: 1; filter: none; font-weight: 600; }
+.panel { position: absolute; z-index: 1; inset: 0; }
+
+/* Each control lists the tabs it shows on, e.g. data-on="0 1". */
+.client[data-tab="0"] [data-on]:not([data-on~="0"]),
+.client[data-tab="1"] [data-on]:not([data-on~="1"]),
+.client[data-tab="2"] [data-on]:not([data-on~="2"]) { display: none !important; }
+
+.btn {
+  position: absolute; margin: 0; padding: 0 6px; font: inherit; color: #000;
+  background: #e1e1e1; border: 1px solid #adadad; cursor: var(--hand, pointer);
+}
+.btn:hover { background: #e5f1fb; border-color: var(--accent); }
+.btn:active { background: #cce4f7; border-color: #005499; }
+.btn:focus-visible { outline: 1px dotted #000; outline-offset: -4px; border-color: var(--accent); box-shadow: inset 0 0 0 1px var(--accent); }
+/* Parchment text buttons: wooden button images with a blackletter face. There's no hover image,
+   so hover brightens the text instead. */
+:root:not([data-simple]) .btn {
+  border: 0; background: url("images/ui/button.webp") center / 100% 100% no-repeat;
+  font: 14px "Lucida Blackletter", "Old English Text MT", serif; color: #f1deae;
+}
+:root:not([data-simple]) .btn:hover { color: #fff8e0; }
+:root:not([data-simple]) .btn:active { background-image: url("images/ui/button_pressed.webp"); }
+:root:not([data-simple]) .btn:focus-visible { outline-color: #f1deae; box-shadow: none; }
+.imgbtn { position: absolute; margin: 0; padding: 0; border: 0; background: none; cursor: var(--hand, pointer); }
+.imgbtn img { display: block; width: 100%; height: 100%; }
+.imgbtn:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+.stateful img { position: absolute; inset: 0; }
+.stateful .s-hover, .stateful .s-pressed { visibility: hidden; }
+.stateful:hover .s-hover, .stateful:active .s-pressed,
+.stateful[aria-pressed="true"] .s-pressed { visibility: visible; }
+
+.label { position: absolute; margin: 0; white-space: nowrap; }
+.chk { position: absolute; display: flex; align-items: center; gap: 4px; white-space: nowrap; cursor: var(--hand, pointer); }
+.chk input { flex: none; margin: 0; cursor: var(--hand, pointer); }
+.chk img { flex: none; display: block; }
+/* Parchment checkboxes: wooden box images in place of the system checkbox, pressed while the label is held down. */
+:root:not([data-simple]) input[type="checkbox"] {
+  appearance: none; -webkit-appearance: none; flex: none; width: 16px; height: 16px; margin: 0; border: 0; border-radius: 0;
+  background: url("images/ui/checkbox_unticked.webp") center / 100% 100% no-repeat;
+}
+:root:not([data-simple]) input[type="checkbox"]:checked { background-image: url("images/ui/checkbox_ticked.webp"); }
+:root:not([data-simple]) label:active > input[type="checkbox"] { background-image: url("images/ui/checkbox_unticked_pressed.webp"); }
+:root:not([data-simple]) label:active > input[type="checkbox"]:checked { background-image: url("images/ui/checkbox_ticked_pressed.webp"); }
+:root:not([data-simple]) input[type="checkbox"]:focus-visible { outline: 1px dotted #000; outline-offset: 1px; }
+/* The logs keep the arrow cursor rather than the text cursor. The script scrolls them for touch, so the browser's
+   panning, with its momentum, is off. */
+.log {
+  position: absolute; margin: 0; padding: 2px 4px; resize: none; border: 1px solid #7a7a7a;
+  background: #fff; color: #000; font: 12px/1.35 var(--ui); user-select: text; -webkit-user-select: text; touch-action: none;
+  cursor: var(--arrow, default);
+}
+.log:focus-visible { outline: 1px solid var(--accent); border-color: var(--accent); }
+/* Parchment log panels: a sunken brown box built from the 6 px nine-slice parts. The parts are opaque, so each edge
+   can tile the whole length of its side under the corners. The transparent border keeps the scrollbar inside the
+   frame, and the padding keeps the text a little further in. */
+:root:not([data-simple]) .log {
+  --slice: 6px;
+  border: var(--slice) solid transparent; padding: 6px 2px 6px 8px; color: #d9c69d;
+  background:
+    url("images/ui/log_9slice/top-left.webp") 0 0 / var(--slice) no-repeat border-box,
+    url("images/ui/log_9slice/top-right.webp") 100% 0 / var(--slice) no-repeat border-box,
+    url("images/ui/log_9slice/bottom-left.webp") 0 100% / var(--slice) no-repeat border-box,
+    url("images/ui/log_9slice/bottom-right.webp") 100% 100% / var(--slice) no-repeat border-box,
+    url("images/ui/log_9slice/top-edge.webp") 0 0 / var(--slice) repeat-x border-box,
+    url("images/ui/log_9slice/bottom-edge.webp") 0 100% / var(--slice) repeat-x border-box,
+    url("images/ui/log_9slice/left-edge.webp") 0 0 / var(--slice) repeat-y border-box,
+    url("images/ui/log_9slice/right-edge.webp") 100% 0 / var(--slice) repeat-y border-box,
+    url("images/ui/log_9slice/inlay.webp") 0 0 / var(--slice) repeat border-box;
+}
+:root:not([data-simple]) .log:focus-visible { border-color: transparent; outline-color: #5a3d22; }
+/* Parchment log scrollbars: the script hides the browser's scrollbar on each log and lays one in the game's style
+   over the log's right side, in every browser. Its parts are drawn here: an up button, a track and a down button,
+   27 px wide, and a 21 px knob that runs the whole track. A log with a scrollbar keeps its text clear of it. */
+:root:not([data-simple]) .log { scrollbar-width: none; }
+:root:not([data-simple]) .log::-webkit-scrollbar { display: none; }
+:root:not([data-simple]) .log.has-bar { padding-right: 29px; }
+.sb { position: absolute; width: 27px; touch-action: none; }
+.sb-btn { position: absolute; left: 0; width: 27px; height: 27px; }
+/* Up button: a light rim and bands over a tan face, in a dark frame. The full-width rows sit over the side columns,
+   and the side columns over the face's inner bands. */
+.sb-up {
+  top: 0;
+  background: linear-gradient(#c09359 0 3px, #cea167 3px 4px, #d4a76d 4px 5px, #b8894f 5px 20px, #cf9e5f 20px 21px, #d4a56c 21px 22px, #b68851 22px);
+  box-shadow:
+    inset 0 1px #a87a41, inset 0 2px #dcaf75,
+    inset 0 -1px #4a3117, inset 0 -2px #856444, inset 0 -3px #7d562f, inset 0 -4px #926537,
+    inset 1px 0 #765129, inset 2px 0 #835c35, inset 3px 0 #7c532a, inset 4px 0 #7c5124, inset 5px 0 #8c6031,
+    inset -1px 0 #78522f, inset -2px 0 #835b39, inset -3px 0 #7a522d, inset -4px 0 #7d562f, inset -5px 0 #8b6033;
+}
+/* Down button: dark at the top, light just below it, and darker at the base. */
+.sb-down {
+  bottom: 0;
+  background: linear-gradient(#d6b489 0 3px, #bd935f 3px 4px, #b98a51 4px 7px, #d7a46f 7px 8px, #bc8956 8px 9px, #b88852 9px 21px, #986d3e 21px);
+  box-shadow:
+    inset 0 1px #4b3314, inset 0 2px #846a47,
+    inset 0 -1px #654625, inset 0 -2px #795430, inset 0 -3px #815733, inset 0 -4px #744a26, inset 0 -5px #81562e,
+    inset 1px 0 #795430, inset 2px 0 #835b39, inset 3px 0 #7a502c, inset 4px 0 #7c5028, inset 5px 0 #8b5e34,
+    inset -1px 0 #78522f, inset -2px 0 #815c39, inset -3px 0 #7a522d, inset -4px 0 #7e542e, inset -5px 0 #8b5f2c;
+}
+/* The arrow: a gold triangle over a dark one shifted right and a light one shifted left, so it has a dark edge on
+   one slope and a highlight on the other. The down arrow is the up arrow turned around. */
+.sb-btn::before, .sb-btn > span, .sb-btn::after { content: ""; position: absolute; inset: 0; }
+.sb-btn::before { background: #dfa870; clip-path: polygon(12px 10.5px, 19.5px 19.5px, 3.5px 19.5px); }
+.sb-btn > span { background: #6a2c0e; clip-path: polygon(14.5px 10px, 22px 19.5px, 7px 19.5px); }
+.sb-btn::after { background: linear-gradient(#b27c37, #a06d24); clip-path: polygon(13px 11px, 19.5px 19.5px, 4.5px 19.5px); }
+.sb-down::before, .sb-down > span, .sb-down::after { transform: rotate(180deg); transform-origin: 13.5px 14.5px; }
+/* Track: the body's columns, dark in the middle with lighter rims */
+.sb-track {
+  position: absolute; top: 27px; bottom: 27px; left: 0; width: 27px;
+  background: linear-gradient(90deg, #7b4f2e 0 1px, #815a3b 1px 2px, #6e5036 2px 3px, #664f36 3px 4px, #624e35 4px 5px,
+    #614f35 5px 23px, #644d31 23px 24px, #705130 24px 25px, #7f5b37 25px 26px, #76532f 26px);
+}
+/* Knob: a tan block, light along the top and dark along the bottom and sides */
+.sb-knob {
+  position: absolute; left: 3px; width: 21px; height: 21px; background: #bb8d55;
+  box-shadow:
+    inset 0 1px #c79962, inset 0 2px #cc9e67,
+    inset 0 -1px #754d2d, inset 0 -2px #815731, inset 0 -3px #9f7244,
+    inset 1px 0 #7e522a, inset 2px 0 #8a5f35, inset 3px 0 #af8553,
+    inset -1px 0 #7c532a, inset -2px 0 #8c6230, inset -3px 0 #ab824c;
+}
+
+/* Positions in the 534x511 client area, as on the desktop app */
+#optionsBig { left: 60px; top: 54px; width: 83px; height: 72px; overflow: hidden; }
+/* The options art sits in wide transparent margins: scale it so the visible part is about 72 px. */
+#optionsBig img { inset: -14px auto auto -11px; width: 100px; height: 100px; }
+#civIcon { left: 217px; top: 165px; width: 104px; height: 104px; }
+#civName { left: 169px; top: 273px; width: 200px; text-align: center; font-size: 13px; font-weight: 600; }
+#drawBtn { left: 217px; top: 305px; width: 100px; height: 30px; }
+#resetBtn { left: 10px; top: 471px; width: 100px; height: 30px; }
+.client[data-tab="1"] #resetBtn { left: 217px; }
+#techBtn { left: 384px; top: 391px; width: 60px; height: 60px; }
+/* The share button sits midway between Draw and Reset on the Log tab. */
+#shareBtn { left: 249px; top: 385px; width: 37px; height: 37px; }
+#roundCounter { left: 456px; top: 484px; width: 60px; text-align: right; }
+#drawnCount { left: 10px; top: 32px; }
+#clearLogBtn { left: 110px; top: 25px; width: 100px; height: 30px; }
+#drawnLog { left: 10px; top: 60px; width: 198px; height: 441px; }
+#remainingCount { left: 327px; top: 32px; }
+#showRemainingLabel { left: 457px; top: 30px; height: 20px; }
+#remainingLog { left: 327px; top: 60px; width: 202px; height: 441px; }
+/* Edition rows, placed by the script */
+.edition { display: flex; align-items: center; gap: 4px; width: 175px; height: 28px; font: inherit; color: #000; text-align: left; white-space: nowrap; }
+.ed-icon { position: relative; flex: none; width: 28px; height: 28px; }
+.edition[aria-pressed="true"] { font-weight: 600; }
+/* The banner and count sit 10 px right of the desktop app's spot, so the bold selected edition name clears them. */
+#editionIcon { left: 200px; top: 30px; width: 128px; height: 93px; }
+#enabledCount { left: 210px; top: 140px; }
+#autoToggleLabel { left: 10px; top: 180px; height: 20px; }
+.civ { width: 102px; height: 20px; }
+/* Civ and DLC toggles: the icon stands in for the checkbox, which stays in the label for the keyboard
+   and screen readers. When off, the icon turns grey under the off cross. */
+:root:not([data-simple]) .icon-chk input { position: absolute; width: 1px; height: 1px; opacity: 0; pointer-events: none; }
+.chk-icon { position: relative; flex: none; }
+.chk-icon img { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: contain; }
+.chk-off { visibility: hidden; transform: scale(.9); }
+.icon-chk input:not(:checked) ~ .chk-icon .chk-face { filter: grayscale(1); }
+.icon-chk input:not(:checked) ~ .chk-icon .chk-off { visibility: visible; }
+.icon-chk input:focus-visible ~ .chk-icon { outline: 1px dotted #000; outline-offset: 1px; }
+/* Civ and DLC names are bold when on and struck through when off. The narrower gap after the civ
+   icon keeps the widest bold civ name, Burgundians, clear of the next column. */
+:root:not([data-simple]) .civ { gap: 2px; }
+.icon-chk input:checked ~ .chk-name { font-weight: 600; }
+.icon-chk input:not(:checked) ~ .chk-name { font-style: italic; text-decoration: line-through; text-decoration-thickness: 2px; }
+#enableAllBtn { left: 10px; top: 470px; width: 100px; height: 30px; }
+#disableAllBtn { left: 125px; top: 470px; width: 100px; height: 30px; }
+#autoResetLabel { left: 240px; top: 480px; height: 20px; }
+#poolShareBtn { left: 487px; top: 466px; width: 37px; height: 37px; }
+/* A hovered civ is highlighted gold while on and red while off. */
+:root:not([data-simple]) .civ:hover { background: #dccb70; }
+:root:not([data-simple]) .civ:hover:has(input:not(:checked)) { background: #dc6a5c; }
+
+/* Simple mode (/simple): no images or sounds, so image buttons become text buttons. */
+[data-simple] .imgbtn img, [data-simple] .chk img, [data-simple] #civIcon, [data-simple] #editionIcon,
+[data-simple] #soundGroup { display: none !important; }
+[data-simple] #optionsBig, [data-simple] #techBtn, [data-simple] #shareBtn, [data-simple] #poolShareBtn {
+  height: 30px; background: #e1e1e1; border: 1px solid #adadad; font: inherit; color: #000;
+}
+[data-simple] #optionsBig:hover, [data-simple] #techBtn:hover, [data-simple] #shareBtn:hover, [data-simple] #poolShareBtn:hover { background: #e5f1fb; border-color: var(--accent); }
+[data-simple] #optionsBig:active, [data-simple] #techBtn:active, [data-simple] #shareBtn:active, [data-simple] #poolShareBtn:active { background: #cce4f7; border-color: #005499; }
+[data-simple] #optionsBig { top: 60px; }
+[data-simple] #optionsBig::after { content: "Options"; }
+[data-simple] #techBtn { left: 374px; top: 406px; width: 80px; }
+[data-simple] #techBtn::after { content: "Tech Tree"; }
+[data-simple] #shareBtn { left: 217px; top: 388px; width: 100px; }
+[data-simple] #shareBtn::after, [data-simple] #poolShareBtn::after { content: "Share"; }
+[data-simple] #poolShareBtn { left: 424px; top: 470px; width: 100px; }
+[data-simple] .ed-icon { width: 13px; height: 13px; margin: 0 4px 0 2px; border: 1px solid #333; border-radius: 50%; background: #fff; }
+[data-simple] .edition[aria-pressed="true"] .ed-icon { background: radial-gradient(#000 0 3px, #fff 3.5px); }
+
+/* Status messages show just below the window, without moving it. */
+#app { position: relative; }
+#toast {
+  position: absolute; z-index: 5; top: 100%; left: 50%; margin-top: 14px; transform: translateX(-50%);
+  padding: 5px 12px; border-radius: 3px; background: #2b2b2b; color: #fff; white-space: nowrap;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, .3); pointer-events: none; opacity: 0; transition: opacity .15s;
+}
+#toast.show { opacity: 1; }
+
+#tip {
+  position: fixed; z-index: 100; max-width: 300px; padding: 3px 7px 4px;
+  background: #fff; color: #575757; border: 1px solid #767676; box-shadow: 1px 1px 3px rgba(0, 0, 0, .18);
+  font: 12px/1.35 var(--ui); white-space: pre-line; pointer-events: none;
+}
+/* Parchment tooltips: tan with dark brown text. A tooltip for a button that opens another site starts with
+   the external icon, filtered from the menus' cream to the tooltip's text colour. */
+:root:not([data-simple]) #tip { background: #d7b394; color: #391c1b; }
+:root:not([data-simple]) #tip.ext::before {
+  content: ""; display: inline-block; width: 12px; height: 12px; margin-right: 4px; vertical-align: -1px;
+  background: url("images/ui/external.webp") center / contain no-repeat; filter: brightness(.15) hue-rotate(-54deg) saturate(3.1);
+}
+
+/* Dialogs */
+dialog.win {
+  padding: 0; max-width: calc(100vw - 32px); border: 1px solid var(--frame); background: var(--face); color: #000;
+  color-scheme: light; font: 12px/1.4 var(--ui); box-shadow: 0 12px 36px rgba(0, 0, 0, .35);
+}
+dialog.win::backdrop { background: rgba(0, 0, 0, .15); }
+/* Every dialog is a parchment panel. The padding keeps the content inside the panel's frame, and a drop shadow
+   follows the panel's transparent corners where a box shadow wouldn't. */
+:root:not([data-simple]) dialog.win {
+  --slice: 38px;
+  padding: 13px; border: 0; box-shadow: none; filter: drop-shadow(0 12px 24px rgba(0, 0, 0, .35));
+  background: none;
+}
+/* The frame is built from the 64 px nine-slice parts, each drawn --slice px square. An edge would tile the whole
+   length of its side and show through the corners' transparent parts, so each edge is clipped to the padding box
+   of a layer whose transparent border covers the corners: ::before draws the corners, the top and bottom edges
+   and the inlay, and ::after draws the side edges. The inlay reaches half a slice under the edges and corners,
+   whose inner halves are opaque, so a dialog with a fractional height leaves no gap where they meet. */
+:root:not([data-simple]) dialog.win::before, :root:not([data-simple]) dialog.win::after {
+  content: ""; position: absolute; z-index: -1; inset: 0; pointer-events: none;
+}
+:root:not([data-simple]) dialog.win::before {
+  border-inline: var(--slice) solid transparent;
+  background:
+    url("images/ui/panel_9slice/boxstyle3_angle_topleft.png") 0 0 / var(--slice) no-repeat border-box,
+    url("images/ui/panel_9slice/boxstyle3_angle_topright.png") 100% 0 / var(--slice) no-repeat border-box,
+    url("images/ui/panel_9slice/boxstyle3_angle_bottomleft.png") 0 100% / var(--slice) no-repeat border-box,
+    url("images/ui/panel_9slice/boxstyle3_angle_bottomright.png") 100% 100% / var(--slice) no-repeat border-box,
+    url("images/ui/panel_9slice/boxstyle3_edge_top.png") 0 0 / var(--slice) repeat-x padding-box,
+    url("images/ui/panel_9slice/boxstyle3_edge_bottom.png") 0 100% / var(--slice) repeat-x padding-box,
+    url("images/ui/panel_9slice/boxstyle3_inlay.png") calc(var(--slice) / 2) calc(var(--slice) / 2) / calc(100% - var(--slice)) calc(100% - var(--slice)) no-repeat border-box;
+}
+:root:not([data-simple]) dialog.win::after {
+  border-block: var(--slice) solid transparent;
+  background:
+    url("images/ui/panel_9slice/boxstyle3_edge_left.png") 0 0 / var(--slice) repeat-y padding-box,
+    url("images/ui/panel_9slice/boxstyle3_edge_right.png") 100% 0 / var(--slice) repeat-y padding-box;
+}
+:root:not([data-simple]) dialog.win .dlg-title { background: none; }
+:root:not([data-simple]) #dlgOptions .group { border-color: rgba(60, 40, 20, .35); }
+/* Hint, label, link and error colours dark enough to read on the panel's tan */
+:root:not([data-simple]) dialog.win :is(.hint, .facts dt) { color: #3d2c1c; }
+:root:not([data-simple]) dialog.win a { color: #08306a; }
+:root:not([data-simple]) dialog.win .err { color: #680a0a; }
+.dlg-title { display: flex; align-items: center; justify-content: space-between; height: 30px; padding-left: 10px; background: #fff; user-select: none; -webkit-user-select: none; }
+.dlg-title h2 { margin: 0; font: inherit; }
+.dlg-x { width: 46px; height: 30px; border: 0; background: none; font: 13px var(--ui); color: #000; cursor: pointer; }
+.dlg-x:hover { background: #e81123; color: #fff; }
+/* Parchment close buttons: the wooden x button in place of the ✕ glyph, with no hover change. */
+:root:not([data-simple]) .dlg-x {
+  color: transparent; cursor: var(--arrow, default); background: url("images/ui/xbutton.webp") center / 17px 17px no-repeat;
+}
+:root:not([data-simple]) .dlg-x:active { background-image: url("images/ui/xbutton_pressed.webp"); }
+.dlg-body { padding: 12px 14px 4px; }
+.dlg-body p { margin: 0 0 8px; }
+.dlg-buttons { display: flex; justify-content: flex-end; gap: 8px; padding: 8px 14px 14px; }
+.dlg-buttons .btn, .dlg-body .btn { position: static; min-width: 75px; height: 23px; }
+.dlg-body a { color: #0066cc; cursor: var(--hand, pointer); }
+.group { min-width: 0; margin: 0; padding: 4px 10px 10px; border: 1px solid #dcdcdc; }
+.group legend { padding: 0 3px; }
+.row { display: flex; align-items: center; gap: 6px; min-height: 22px; white-space: nowrap; cursor: var(--hand, pointer); }
+.row input { margin: 0; cursor: var(--hand, pointer); }
+.field { display: grid; gap: 4px; width: 420px; margin-bottom: 8px; }
+dialog select, dialog input[type="text"] {
+  height: 22px; padding: 0 4px; border: 1px solid #7a7a7a; background: #fff; color: #000; font: inherit;
+}
+dialog select:disabled { color: #8a8a8a; border-color: #c4c4c4; }
+/* Parchment dropdowns: dark brown like the menus, with the wooden dropdown button as the arrow. */
+:root:not([data-simple]) dialog select {
+  appearance: none; -webkit-appearance: none; padding: 0 22px 0 4px; border-color: #3d2c1c; border-radius: 0; color: #f1deae; cursor: var(--hand, pointer);
+  background: #65523b url("images/ui/dropdownbutton.webp") right center / 16px 100% no-repeat;
+}
+/* Each box fits its longest option, as a system dropdown does, so it keeps its width when the choice changes. */
+:root:not([data-simple]) dialog select[name="jingleType"] { width: 124px; }
+:root:not([data-simple]) dialog select[name="hotkeys"] { width: 120px; }
+:root:not([data-simple]) dialog select:active { background-image: url("images/ui/dropdownbutton_pressed.webp"); }
+:root:not([data-simple]) dialog select:disabled { opacity: .55; cursor: var(--arrow, default); }
+:root:not([data-simple]) dialog select:focus-visible { outline: 1px dotted #000; outline-offset: 1px; }
+:root:not([data-simple]) dialog option { background: #65523b; color: #f1deae; }
+/* Browsers with customizable selects also get the menus' gold highlight on the hovered option.
+   Elsewhere the open list is brown, but the hovered option keeps the system highlight. */
+@supports (appearance: base-select) {
+  :root:not([data-simple]) dialog select, :root:not([data-simple]) dialog select::picker(select) { appearance: base-select; }
+  :root:not([data-simple]) dialog select { min-block-size: 0; align-items: center; }
+  :root:not([data-simple]) dialog select:open { background-image: url("images/ui/dropdownbutton_pressed.webp"); }
+  :root:not([data-simple]) dialog select::picker-icon, :root:not([data-simple]) dialog option::checkmark { display: none; }
+  /* The list opens below the box unless it doesn't fit there, as a system dropdown does. */
+  :root:not([data-simple]) dialog select::picker(select) {
+    padding: 2px; border: 1px solid #3d2c1c; border-radius: 0; background: #65523b; box-shadow: 2px 2px 3px rgba(0, 0, 0, .25);
+    position-try-order: normal;
+  }
+  :root:not([data-simple]) dialog option { min-block-size: 0; padding: 3px 6px; cursor: var(--hand, pointer); }
+  :root:not([data-simple]) dialog option:hover, :root:not([data-simple]) dialog option:focus-visible { background: #dccb70; color: #000; outline: none; }
+}
+/* Parchment text fields in the share, lobby and open link dialogs: the dark textfield images, with white text. */
+:root:not([data-simple]) :is(#sharePool, #shareRound, #lobbyCode, #openInput) {
+  padding: 0 6px; border: 0; border-radius: 0; color: #fff; background: center / 100% 100% no-repeat;
+}
+:root:not([data-simple]) :is(#sharePool, #shareRound) { background-image: url("images/ui/link_textfield.webp"); }
+:root:not([data-simple]) :is(#lobbyCode, #openInput) { background-image: url("images/ui/lobbycode_textfield.webp"); }
+:root:not([data-simple]) #lobbyCode::placeholder { color: rgba(255, 255, 255, .45); }
+:root:not([data-simple]) :is(#sharePool, #shareRound, #lobbyCode, #openInput):focus-visible { outline: 1px dotted #000; outline-offset: 1px; }
+dialog input[type="range"] { width: 100%; margin: 2px 0; cursor: var(--arrow, default); }
+/* Parchment slider: the off track, with the on track over it up to the knob's centre, and the knob image as the
+   thumb. The knob travels along the track's groove, which runs from 32 to 308 px of the 340 px images, between the
+   arrowheads. The script sets --fill (0 to 1) to the slider's position. */
+:root:not([data-simple]) .slider {
+  position: relative; margin: 2px 0;
+  background: url("images/ui/slider_off.webp") 0 50% / 100% auto no-repeat;
+}
+:root:not([data-simple]) .slider::before {
+  content: ""; position: absolute; inset: 0;
+  background: url("images/ui/slider_on.webp") 0 50% / 100% auto no-repeat;
+  clip-path: inset(0 calc(100% - 9.41% - 81.18% * var(--fill, 0)) 0 0);
+}
+:root:not([data-simple]) .slider:has(input:disabled) { opacity: .55; }
+:root:not([data-simple]) .slider input {
+  -webkit-appearance: none; appearance: none; position: relative; display: block;
+  width: calc(81.18% + 24px); height: 24px; margin: 0 auto; background: none;
+}
+:root:not([data-simple]) .slider input:focus-visible { outline: 1px dotted #000; outline-offset: 1px; }
+:root:not([data-simple]) .slider input::-webkit-slider-runnable-track { height: 24px; background: none; }
+:root:not([data-simple]) .slider input::-moz-range-track { height: 24px; background: none; }
+:root:not([data-simple]) .slider input::-webkit-slider-thumb {
+  -webkit-appearance: none; width: 24px; height: 24px; border: 0; background: url("images/ui/slider_knob.webp") center / contain no-repeat;
+}
+:root:not([data-simple]) .slider input::-moz-range-thumb {
+  width: 24px; height: 24px; border: 0; border-radius: 0; background: url("images/ui/slider_knob.webp") center / contain no-repeat;
+}
+.hint { color: #555; }
+.err { color: #c42b1c; }
+.opt-grid { display: grid; grid-template-columns: repeat(3, 214px); gap: 10px; }
+.span2 { grid-column: span 2; }
+.inline { display: flex; align-items: center; gap: 10px; }
+.hk-grid { display: grid; grid-template-columns: auto auto auto; gap: 4px 28px; align-items: start; }
+.hk-grid h3 { margin: 0 0 4px; font-size: 12px; }
+.hk-grid section + section { margin-top: 12px; }
+.hk-grid ul { margin: 0; padding: 0; list-style: none; }
+.hk-grid .global ul { columns: 2; column-gap: 28px; }
+.hk-grid li { white-space: nowrap; line-height: 1.75; break-inside: avoid; }
+kbd.key {
+  display: inline-block; min-width: 20px; padding: 0 4px; border: 1px solid #b4b4b4; border-bottom-width: 2px;
+  border-radius: 3px; background: #fff; font: 11px/1.4 var(--ui); text-align: center;
+}
+:root:not([data-simple]) kbd.key { background: #d7b394; color: #391c1b; }
+.about { width: 440px; }
+.share { width: 600px; }
+.share-row { display: grid; grid-template-columns: 120px 1fr auto; gap: 8px; align-items: center; margin-bottom: 8px; }
+.share-row input { width: 100%; }
+.preview { width: 440px; }
+.facts { display: grid; grid-template-columns: auto 1fr; gap: 3px 12px; margin: 0 0 10px; }
+.facts dt { color: #555; }
+.facts dd { margin: 0; }
+.msg { width: 380px; }
