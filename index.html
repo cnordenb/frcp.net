@@ -34,12 +34,13 @@
     background: var(--page); color: var(--page-ink); font: 12px/1.35 var(--ui);
   }
   .noscript, #mobileNote { margin: 0; padding: 0 16px; font-size: 18px; text-align: center; }
+/*
   #mobileNote { display: none; }
   @media (pointer: coarse) {
     body { min-width: 0; }
     #app { display: none; }
     #mobileNote { display: block; }
-  }
+  } */
 
   /* Window replica */
   .window {
@@ -797,10 +798,11 @@ class MersenneTwister {
 </script>
 
 <script>
+/*
 "use strict";
 (() => {
   // Touch devices get the placeholder from the CSS, and the picker doesn't start.
-  if (matchMedia("(pointer: coarse)").matches) return;
+  if (matchMedia("(pointer: coarse)").matches) return; */
 
   const VERSION = "1.0.0";
   // simple/index.html loads this page with data-simple set: no images, no sounds.
