@@ -1076,7 +1076,7 @@ class MersenneTwister {
     try { a.currentTime = 0; } catch { /* not loaded yet */ }
     const p = a.play();
     if (p) p.catch(() => {});
-  }
+  } //test
   const uiUrl = (name) => `sounds/ui/${UI_SOUNDS[name]}.webm`;
   function sfx(name) {
     if (settings.uiSounds) playUrl(uiUrl(name));
