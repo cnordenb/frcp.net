@@ -24,13 +24,7 @@ body {
   display: flex; flex-direction: column; align-items: center; justify-content: center;
   background: var(--page); color: var(--page-ink); font: 12px/1.35 var(--ui);
 }
-.noscript, #mobileNote { margin: 0; padding: 0 16px; font-size: 18px; text-align: center; }
-#mobileNote { display: none; }
-/* @media (pointer: coarse) {
-  body { min-width: 0; }
-  #app { display: none; }
-  #mobileNote { display: block; }
-} */
+.noscript { margin: 0; padding: 0 16px; font-size: 18px; text-align: center; }
 
 /* Window replica */
 .window {
@@ -455,3 +449,136 @@ kbd.key {
 .facts dt { color: #555; }
 .facts dd { margin: 0; }
 .msg { width: 380px; }
+
+/* Phones: narrower than the desktop window, the page becomes a phone layout. The parchment fills the screen, the
+   tabs fill the bottom edge and a hamburger menu at the top right stands in for the menu bar. Each tab's panel is a
+   grid of named areas in place of the desktop positions. The Draw Civ tab has no buttons, as the script turns swipes
+   on it into draws, and the Log and Civ Pool tabs are laid out to the screen's width. .desk marks what only the
+   desktop layout shows, and .mob what only the phone layout shows. */
+@media (min-width: 610px) {
+  .mob { display: none !important; }
+}
+@media (max-width: 609px) {
+  :root { --tabbar: 64px; }
+  .desk { display: none !important; }
+  html, body { height: 100%; overflow: hidden; overscroll-behavior: none; }
+  body { min-width: 0; min-height: 0; padding: 0; display: block; font-size: 13px; -webkit-tap-highlight-color: transparent; }
+  #app { position: fixed; inset: 0; }
+  .window, :root:not([data-simple]) .window { position: absolute; inset: 0; width: auto; padding: 0; border: 0; box-shadow: none; }
+  :root:not([data-simple]) .window { background-image: url("images/ui/background_mobile.webp"); }
+  .titlebar, .menubar, .frame { display: none; }
+  .client { position: absolute; inset: 0 0 var(--tabbar); width: auto; height: auto; }
+
+  /* Hamburger menu: three bars in the button's text colour, which turns cream on brown while the menu is open, as
+     the desktop menus' titles do */
+  #mobileMenu { position: fixed; z-index: 20; top: 10px; right: 12px; }
+  #mobileMenu .menu-title {
+    width: 44px; height: 40px; padding: 0; color: #3d2c1c; cursor: var(--hand, pointer);
+    background: linear-gradient(currentColor 0 0) 50% 11px / 24px 3px no-repeat,
+      linear-gradient(currentColor 0 0) 50% 18px / 24px 3px no-repeat, linear-gradient(currentColor 0 0) 50% 25px / 24px 3px no-repeat;
+  }
+  #mobileMenu.open .menu-title { background-color: #cce8ff; }
+  :root:not([data-simple]) #mobileMenu.open .menu-title { background-color: #65523b; color: #f1deae; }
+  #mobileMenu .menu-list { top: calc(100% + 2px); left: auto; right: 0; min-width: 190px; }
+  #mobileMenu .menu-list > :is(button, a) { padding: 10px 18px 10px 32px; font-size: 15px; }
+
+  /* Tab bar: the three tabs share the width. The phone tabs atlas has each tab's selected look on the left and its
+     normal look on the right, and the tabs differ in size, so --tx, --ty, --tw and --th give the look's box in the
+     atlas. ::before draws the whole atlas, scaled so that box fills the tab. */
+  .tabstrip { position: fixed; z-index: 10; inset: auto 0 0; height: var(--tabbar); }
+  :root .tabstrip .tab { flex: 1 1 0; width: auto; top: 0; height: 100%; margin: 0; padding: 0 0 4px; font-size: 16px; }
+  .tab[aria-selected="true"] { font-weight: 600; }
+  :root:not([data-simple]) .tab { background: none; filter: none; isolation: isolate; overflow: hidden; }
+  :root:not([data-simple]) .tab::before {
+    content: ""; position: absolute; z-index: -1;
+    left: calc(var(--tx) / var(--tw) * -100%); top: calc(var(--ty) / var(--th) * -100%);
+    width: calc(1400 / var(--tw) * 100%); height: calc(353 / var(--th) * 100%);
+    background: url("images/ui/mobile_tabs.webp") 0 0 / 100% 100% no-repeat;
+  }
+  #tab-0 { --tx: 363; --ty: 5; --tw: 333; --th: 178; }
+  #tab-0[aria-selected="true"] { --tx: 24; }
+  #tab-1 { --tx: 1045; --ty: 2; --tw: 317; --th: 148; }
+  #tab-1[aria-selected="true"] { --tx: 708; }
+  #tab-2 { --tx: 359; --ty: 195; --tw: 305; --th: 147; }
+  #tab-2[aria-selected="true"] { --tx: 30; }
+
+  /* Panels: grids of named areas, with room at the top for the menu button. Their items leave the desktop positions,
+     all but the log scrollbars, which the script places, and the sprites, whose images hang off their own box. */
+  .panel { display: grid; gap: 6px 10px; padding: 58px 14px 10px; }
+  .panel > :not(.sb) { position: static; }
+  :root :is(#civIcon, #editionIcon, #shareBtn, #poolShareBtn) { position: relative; left: auto; top: auto; }
+  [data-simple] :is(#shareBtn, #poolShareBtn) { width: 60px; }
+
+  /* Draw Civ tab: the round counter level with the menu button, the civ in the middle and the swipe hints at the
+     bottom. touch-action: none keeps the browser from scrolling, zooming or reloading the page on a swipe. */
+  .client[data-tab="0"] .panel {
+    grid-template: "counter" 40px "." 1fr "icon" auto "name" auto "." 1fr "hints" auto / minmax(0, 1fr);
+    justify-items: center; padding-top: 10px; touch-action: none; -webkit-touch-callout: none;
+  }
+  #roundCounter { grid-area: counter; justify-self: start; align-self: center; width: auto; }
+  #civIcon { grid-area: icon; width: 144px; height: 144px; }
+  #civName { grid-area: name; width: auto; max-width: 100%; font-size: 20px; }
+  #swipeHints { grid-area: hints; text-align: center; color: #3d2c1c; }
+  #swipeHints p { margin: 0; line-height: 1.7; }
+
+  /* Log tab: the counts over the logs, then Clear Log and the share button over the drawn log and Show over the
+     remaining one, and the logs filling the rest. The drawn log is the wider, as its lines are the longer. */
+  .client[data-tab="1"] .panel {
+    grid-template: "dcount rcount" auto "dctl rctl" auto "dlog rlog" minmax(0, 1fr) / minmax(0, 5fr) minmax(0, 4fr);
+    align-items: center;
+  }
+  .client[data-tab="1"] :is(#civIcon, #civName) { display: none; }
+  #drawnCount { grid-area: dcount; }
+  #remainingCount { grid-area: rcount; }
+  #clearLogBtn { grid-area: dctl; justify-self: start; }
+  #shareBtn { grid-area: dctl; justify-self: end; }
+  #showRemainingLabel { grid-area: rctl; justify-self: end; }
+  #drawnLog { grid-area: dlog; }
+  #remainingLog { grid-area: rlog; }
+  #drawnLog, #remainingLog { width: 100%; height: 100%; align-self: stretch; font-size: 13px; }
+
+  /* Civ Pool tab: the editions beside the banner, Auto-toggle beside the count and the DLC toggles in two columns,
+     then the civs in three columns, which scroll when the screen is too short for them, and the buttons at the
+     bottom */
+  .client[data-tab="2"] .panel {
+    grid-template:
+      "ed ed banner banner" auto
+      "tog tog count count" auto
+      "dlc dlc dlc dlc" auto
+      "civs civs civs civs" minmax(0, 1fr)
+      "enable disable . share" auto
+      "reset reset reset share" auto / 90px 90px minmax(0, 1fr) auto;
+    gap: 6px 8px;
+  }
+  #editionGroup { grid-area: ed; display: flex; flex-direction: column; gap: 2px; }
+  #editionGroup > .edition { position: static; width: auto; }
+  #editionIcon { grid-area: banner; justify-self: end; }
+  #autoToggleLabel { grid-area: tog; }
+  #enabledCount { grid-area: count; justify-self: end; }
+  .panel > div[data-edition] { grid-area: dlc; display: flex; flex-wrap: wrap; gap: 2px 10px; }
+  .panel > div[data-edition] > label { position: static; width: calc(50% - 5px); }
+  #civGrid {
+    grid-area: civs; display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); grid-auto-rows: 24px;
+    align-content: start; column-gap: 4px; overflow-y: auto;
+  }
+  #civGrid > .civ { position: static; width: auto; height: auto; }
+  #enableAllBtn { grid-area: enable; }
+  #disableAllBtn { grid-area: disable; }
+  #enableAllBtn, #disableAllBtn { width: 90px; }
+  #poolShareBtn { grid-area: share; align-self: center; }
+  #autoResetLabel { grid-area: reset; }
+
+  #toast { position: fixed; top: auto; bottom: calc(var(--tabbar) + 12px); margin-top: 0; }
+
+  /* Dialogs fit the screen in one column and close from their own buttons. */
+  .dlg-x { display: none; }
+  .opt-grid { grid-template-columns: minmax(0, 1fr); }
+  .span2 { grid-column: auto; }
+  :is(.about, .share, .preview, .msg, .field) { width: auto; }
+  .share-row { grid-template-columns: minmax(0, 1fr) auto; }
+  .share-row label { grid-column: 1 / -1; }
+}
+/* A touch screen keeps :hover on whatever was last touched, so a tapped civ would stay highlighted. */
+@media (max-width: 609px) and (hover: none) {
+  :root:not([data-simple]) .civ:hover, :root:not([data-simple]) .civ:hover:has(input:not(:checked)) { background: none; }
+}

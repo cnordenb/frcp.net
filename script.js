@@ -106,9 +106,6 @@ class MersenneTwister {
 }
 
 (async () => {
-  // Touch devices get the placeholder from the CSS, and the picker doesn't start.
-  // if (matchMedia("(pointer: coarse)").matches) return;
-
   const VERSION = "1.0.0";
   // simple/index.html loads this page with data-simple set: no images, no sounds.
   const SIMPLE = document.documentElement.hasAttribute("data-simple");
@@ -383,10 +380,10 @@ class MersenneTwister {
     const p = a.play();
     if (p) p.catch(() => {});
   }
-  // Plays the hover sound whenever the mouse cursor turns into the pointing hand.
+  // Plays the hover sound whenever the mouse cursor turns into the pointing hand. A touch has no hover, so it doesn't.
   let handCursor = false;
   function onPointerOver(e) {
-    const hand = e.target instanceof Element && getComputedStyle(e.target).cursor.endsWith("pointer");
+    const hand = e.pointerType === "mouse" && e.target instanceof Element && getComputedStyle(e.target).cursor.endsWith("pointer");
     if (hand && !handCursor) hoverSound();
     handCursor = hand;
   }
@@ -460,10 +457,9 @@ class MersenneTwister {
   // for, it's checked against the civs it can now be picked from and kept a fair pick from them, changing as little
   // as it can, so editing the pool doesn't load jingle after jingle: when civs drop out, it stays unless it's one of
   // them; when civs join, it moves to one of them with the chance a new pick would have had of landing on one; after
-  // any other change, such as a draw, it's picked again.
+  // any other change, such as a draw, it's picked again. A re-roll asks with its own civs to pick from.
   let ahead = { from: [], id: null };
-  function nextDraw() {
-    const from = drawCandidates();
+  function nextDraw(from = drawCandidates()) {
     const before = new Set(ahead.from);
     const joined = from.filter((id) => !before.has(id));
     const dropped = from.length - joined.length < ahead.from.length;
@@ -519,6 +515,32 @@ class MersenneTwister {
     closeRound();
     commit();
     if (settings.jingles && ui.tab !== 2) jingle(null);
+    else sfx("button");
+  }
+
+  // Re-rolling swaps the current civ for another of the civs it was drawn from. Those are nearly always among the
+  // next draw's civs, so the next draw ahead usually stands, and the swap is revealed as quickly as a draw. The
+  // swapped-out civ goes back into the round, so it can still come up later.
+  function reroll() {
+    const entries = round();
+    const current = entries[entries.length - 1];
+    if (!current || !rng) {
+      sfx("error");
+      return;
+    }
+    entries.pop();
+    const others = drawCandidates().filter((id) => id !== current[0]);
+    entries.push(current);
+    if (!others.length) {
+      sfx("error");
+      return;
+    }
+    recordUndo();
+    entries.pop();
+    const id = nextDraw(others);
+    entries.push([id, drawnCount() + 1, poolIds().length]);
+    commit();
+    if (settings.jingles) jingle(id);
     else sfx("button");
   }
 
@@ -1278,8 +1300,9 @@ class MersenneTwister {
     els.tip.hidden = true;
     tipTarget = null;
   }
+  // Tooltips follow the mouse, so a touch shows none.
   function moveTip(e) {
-    const target = settings.tooltips && !openMenuEl && !anyDialogOpen() && e.target instanceof Element
+    const target = settings.tooltips && e.pointerType === "mouse" && !openMenuEl && !anyDialogOpen() && e.target instanceof Element
       ? e.target.closest("[data-tip]") : null;
     if (!target) {
       if (tipTarget) hideTip();
@@ -1374,6 +1397,49 @@ class MersenneTwister {
     if (e.repeat) return;
     hideTip();
     ACTIONS[pair[1]]();
+  }
+
+  // ---- Swipes ----
+
+  // In the phone layout, the Draw Civ tab has no buttons: a swipe left draws, right undoes, up re-rolls and down
+  // resets. A swipe acts when the finger lifts, as browsers allow sound from that but not from the press or the
+  // move. A tap still reaches the civ icon, and a mouse drag that ends on it isn't taken for a click.
+  //
+  // Touch moves are cancelled everywhere but in the civ list, the one part of the layout the browser scrolls.
+  // Otherwise Chrome takes a quick swipe for a fling, even with nothing to scroll, and drops the tap that follows it.
+  const PHONE = matchMedia("(max-width: 609px)");
+  const SWIPE_MIN = 40;
+  function bindSwipes() {
+    let start = null;
+    let ignoreClickUntil = 0;
+    els.panel.addEventListener("pointerdown", (e) => {
+      ignoreClickUntil = 0;
+      const swipeable = PHONE.matches && ui.tab === 0 && e.isPrimary && e.button === 0 && !openMenuEl;
+      start = swipeable ? { x: e.clientX, y: e.clientY } : null;
+    });
+    document.addEventListener("pointerup", (e) => {
+      if (!start || !e.isPrimary) return;
+      const dx = e.clientX - start.x;
+      const dy = e.clientY - start.y;
+      start = null;
+      if (Math.max(Math.abs(dx), Math.abs(dy)) < SWIPE_MIN) return;
+      ignoreClickUntil = performance.now() + 500;
+      if (Math.abs(dx) > Math.abs(dy)) {
+        if (dx < 0) draw();
+        else undo();
+      } else if (dy < 0) reroll();
+      else reset();
+    });
+    document.addEventListener("pointercancel", () => { start = null; });
+    els.panel.addEventListener("click", (e) => {
+      if (performance.now() > ignoreClickUntil) return;
+      ignoreClickUntil = 0;
+      e.stopPropagation();
+      e.preventDefault();
+    }, true);
+    document.querySelector(".window").addEventListener("touchmove", (e) => {
+      if (PHONE.matches && !(e.target instanceof Element && e.target.closest("#civGrid"))) e.preventDefault();
+    }, { passive: false });
   }
 
   // ---- Wiring ----
@@ -1532,6 +1598,10 @@ class MersenneTwister {
       sfx("button");
       toast("Loaded the shared link");
     });
+
+    bindSwipes();
+    // The phone layout's logs change size with the screen, and their scrollbars follow.
+    window.addEventListener("resize", () => { for (const log of logBars.keys()) paintLogBar(log); });
 
     document.addEventListener("keydown", onKeyDown);
     document.addEventListener("keyup", (e) => {

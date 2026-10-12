@@ -11,7 +11,6 @@
 </head>
 <body>
 <noscript><p class="noscript">Fresh Random Civ Picker needs JavaScript.</p></noscript>
-<p id="mobileNote">Only available on desktop for now</p>
 
 <main id="app">
   <div class="window">
@@ -73,24 +72,37 @@
         </div>
       </div>
     </nav>
+    <!-- On phones, a hamburger menu at the top right stands in for the menu bar -->
+    <div class="menu mob" id="mobileMenu">
+      <button type="button" class="menu-title" aria-expanded="false" aria-controls="menu-mobile" aria-label="Menu"></button>
+      <div class="menu-list" id="menu-mobile" role="menu" hidden>
+        <button type="button" role="menuitem" data-act="options"><span>Options ...</span></button>
+        <a role="menuitem" href="https://github.com/cnordenb/frcp_html" target="_blank" rel="noopener"><span>GitHub ...</span></a>
+        <a role="menuitem" href="https://ko-fi.com/hjoerleif" target="_blank" rel="noopener"><span>Donate ...</span></a>
+        <button type="button" role="menuitem" data-act="about"><span>About ...</span></button>
+      </div>
+    </div>
 
     <div class="client" id="client" data-tab="0">
       <div class="frame" aria-hidden="true"></div>
       <div class="tabstrip" role="tablist" aria-label="Views">
-        <button type="button" class="tab" role="tab" id="tab-0" aria-selected="true" aria-controls="panel">Draw Civ</button>
+        <button type="button" class="tab" role="tab" id="tab-0" aria-selected="true" aria-controls="panel"><span class="desk">Draw Civ</span><span class="mob">Draw</span></button>
         <button type="button" class="tab" role="tab" id="tab-1" aria-selected="false" aria-controls="panel" tabindex="-1">Log</button>
-        <button type="button" class="tab" role="tab" id="tab-2" aria-selected="false" aria-controls="panel" tabindex="-1">Civ Pool</button>
+        <button type="button" class="tab" role="tab" id="tab-2" aria-selected="false" aria-controls="panel" tabindex="-1"><span class="desk">Civ Pool</span><span class="mob">Pool</span></button>
       </div>
 
       <div class="panel" id="panel" role="tabpanel" aria-labelledby="tab-0">
-        <!-- Draw Civ tab (the Log tab shares the icon, name, Draw and Reset) -->
-        <button type="button" class="imgbtn sprite" id="optionsBig" data-on="0" aria-label="Options"></button>
+        <!-- Draw Civ tab (the Log tab shares the icon, name, Draw and Reset). On phones it has no buttons: swipes draw. -->
+        <button type="button" class="imgbtn sprite desk" id="optionsBig" data-on="0" aria-label="Options"></button>
         <button type="button" class="imgbtn sprite civ-cell" id="civIcon" data-on="0 1" hidden></button>
         <p class="label" id="civName" data-on="0 1" aria-live="polite">?</p>
-        <button type="button" class="btn" id="drawBtn" data-on="0 1">Draw</button>
-        <button type="button" class="btn" id="resetBtn" data-on="0 1">Reset</button>
-        <button type="button" class="imgbtn sprite" id="techBtn" data-on="0" data-tip-ext aria-label="Tech tree"></button>
+        <button type="button" class="btn desk" id="drawBtn" data-on="0 1">Draw</button>
+        <button type="button" class="btn desk" id="resetBtn" data-on="0 1">Reset</button>
+        <button type="button" class="imgbtn sprite desk" id="techBtn" data-on="0" data-tip-ext aria-label="Tech tree"></button>
         <p class="label" id="roundCounter" data-on="0"></p>
+        <div class="mob" id="swipeHints" data-on="0">
+          <p>Swipe left to draw</p><p>Swipe right to undraw</p><p>Swipe up to redraw</p><p>Swipe down to reset</p>
+        </div>
 
         <!-- Log tab -->
         <p class="label" id="drawnCount" data-on="1"></p>
@@ -127,7 +139,7 @@
         <label class="row"><input type="checkbox" name="showName">Show civ name</label>
         <label class="row"><input type="checkbox" name="showIcon">Show civ icon</label>
         <label class="row"><input type="checkbox" name="showCounter">Show round counter</label>
-        <label class="row"><input type="checkbox" name="tooltips">Enable tooltips</label>
+        <label class="row desk"><input type="checkbox" name="tooltips">Enable tooltips</label>
       </fieldset>
       <fieldset class="group" id="soundGroup"><legend>Sound</legend>
         <label class="row"><input type="checkbox" name="jingles">Enable civ jingles</label>
@@ -146,7 +158,7 @@
         <label class="row"><input type="checkbox" name="newRoundOnVisit">Start a new round</label>
         <p class="hint">Civ pool and draw log are always kept.</p>
       </fieldset>
-      <fieldset class="group span2"><legend>Hotkeys</legend>
+      <fieldset class="group span2 desk"><legend>Hotkeys</legend>
         <div class="inline">
           <label class="row">Mode
             <select name="hotkeys"><option value="desktop">Desktop</option><option value="browser">Browser-friendly</option></select></label>
