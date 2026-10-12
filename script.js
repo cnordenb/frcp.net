@@ -920,7 +920,7 @@ class MersenneTwister {
       EDITION_INFO[ed].dlcToggles.forEach((dlc, i) => {
         const input = h("input", { type: "checkbox" });
         input.addEventListener("change", () => toggleDlc(dlc));
-        const label = h("label", { className: "chk icon-chk", dataset: { tip: dlcTip(dlc, i) } },
+        const label = h("label", { className: "chk icon-chk", dataset: { tip: dlcTip(dlc, i), dlc } },
           input, chkIcon("dlc-cell", dlcCell(dlc), DLC_ATLAS_COLS, L.size), h("span", { className: "chk-name" }, DLCS[dlc].name));
         Object.assign(label.style, { left: L.left + "px", top: L.top + L.step * i + "px", height: L.size + "px", gap: L.gap + "px" });
         group.append(label);
@@ -1636,8 +1636,8 @@ class MersenneTwister {
   if (!SIMPLE) {
     const early = ["ui/button_pressed", "ui/textfield_9slice", "ui/checkbox", "ui/dropdown_button", "ui/x_button",
       "ui/external", "ui/cursor", "ui/cursor_pointing", "ui/slider", "ui/slider_knob", "ui/panel_9slice",
-      "ui/log_9slice", "ui/scrollbar_3slice", "ui/scrollbar_knob",
-      "civ/civicon_atlas", "dlc/dlc_atlas", "dlc/edition_banners_atlas"];
+      "ui/log_9slice", "ui/scrollbar_3slice", "ui/scrollbar_knob", "ui/button_9slice", "ui/button_pressed_9slice",
+      "ui/share_icon", "civ/civicon_atlas", "dlc/dlc_atlas", "dlc/edition_banners_atlas"];
     for (const t of early) new Image().src = `images/${t}.webp`;
   }
   bind();
