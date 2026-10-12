@@ -161,6 +161,7 @@ body {
 :is(#techBtn, #shareBtn, #poolShareBtn):active { --look: 1; }
 
 .label { position: absolute; margin: 0; white-space: nowrap; }
+:is(#roundCounter, #drawnCount, #remainingCount, #enabledCount) { font-weight: 600; }
 .chk { position: absolute; display: flex; align-items: center; gap: 4px; white-space: nowrap; cursor: var(--hand, pointer); }
 .chk input { flex: none; margin: 0; cursor: var(--hand, pointer); }
 .chk img { flex: none; display: block; }
@@ -521,10 +522,10 @@ kbd.key {
   #swipeHints { grid-area: hints; text-align: center; color: #3d2c1c; }
   #swipeHints p { margin: 0; line-height: 1.7; }
 
-  /* Log tab: the counts over the logs, then Clear Log and the share button over the drawn log and Show over the
-     remaining one, and the logs filling the rest. The drawn log is the wider, as its lines are the longer. */
+  /* Log tab: Clear Log and the share button over the drawn log and Show over the remaining one, then the counts just
+     over the logs, and the logs filling the rest. The drawn log is the wider, as its lines are the longer. */
   .client[data-tab="1"] .panel {
-    grid-template: "dcount rcount" auto "dctl rctl" auto "dlog rlog" minmax(0, 1fr) / minmax(0, 5fr) minmax(0, 4fr);
+    grid-template: "dctl rctl" auto "dcount rcount" auto "dlog rlog" minmax(0, 1fr) / minmax(0, 5fr) minmax(0, 4fr);
     align-items: center;
   }
   .client[data-tab="1"] :is(#civIcon, #civName) { display: none; }
