@@ -144,6 +144,16 @@ class MersenneTwister {
   const DISPLAY_ORDER = [...CIVS].sort((a, b) => a.name.localeCompare(b.name, "en"));
   const GRID_COLS = [10, 112, 214, 316, 418];
 
+  // tools/atlas_builder.py lays the icon atlases out in rows of these lengths: the civ icons in civ ID order with
+  // "random" last, and the edition icons (normal, hover and pressed for each edition) followed by the icons of the
+  // DLCs that have one, in data.json order, so each edition's three looks share a row. The edition banners are
+  // stacked in data.json order.
+  const CIV_ATLAS_COLS = 8;
+  const DLC_ATLAS_COLS = 6;
+  const RANDOM_CELL = CIVS.length;
+  const DLC_ICONS = Object.keys(DLCS).filter((d) => DLCS[d].icon);
+  const dlcCell = (dlc) => 3 * EDITIONS.length + DLC_ICONS.indexOf(dlc);
+
   const inEdition = (civ, ed) => EDITION_INFO[civ.edition].year <= EDITION_INFO[ed].year;
   const editionTotal = (ed) => CIVS.filter((c) => inEdition(c, ed)).length;
 
@@ -347,7 +357,8 @@ class MersenneTwister {
     stopSound();
     const a = audioFor(url);
     playing = a;
-    try { a.currentTime = 0; } catch { /* not loaded yet */ }
+    // Seeking takes a moment, so a sound already at its start, such as a preloaded jingle, plays without one.
+    try { if (a.currentTime) a.currentTime = 0; } catch { /* not loaded yet */ }
     const p = a.play();
     if (p) p.catch(() => {});
   }
@@ -388,6 +399,14 @@ class MersenneTwister {
   function jingle(id) {
     if (settings.jingles) playUrl(jingleUrl(id));
   }
+  // Of the jingles, only the two that a draw or a reset plays next are loaded ahead: the next draw's and the random
+  // one. The others load when they're played.
+  function loadNextJingles() {
+    if (SIMPLE || !settings.jingles) return;
+    audioFor(jingleUrl(null));
+    const id = nextDraw();
+    if (id !== null) audioFor(jingleUrl(id));
+  }
 
   let warmed = false;
   function warmUp() {
@@ -396,11 +415,6 @@ class MersenneTwister {
     if (SIMPLE) return;
     for (const name of Object.keys(UI_SOUNDS)) audioFor(uiUrl(name));
     hoverChannel();
-    setTimeout(() => {
-      if (!settings.jingles) return;
-      audioFor(jingleUrl(null));
-      for (const c of CIVS) audioFor(jingleUrl(c.id));
-    }, 1500);
   }
 
   // ---- Drawing ----
@@ -425,21 +439,42 @@ class MersenneTwister {
     return out;
   }
 
-  function pickCiv(left, poolSize) {
-    let candidates = left;
-    if (settings.fresh && poolSize >= 2) {
-      // Skip the last N civs drawn. If that leaves nothing, skip fewer, keeping the most recent ones out.
-      const recent = recentCivs(freshLimit(poolSize));
-      for (let n = recent.length; n > 0; n--) {
-        const skip = new Set(recent.slice(0, n));
-        const fresh = left.filter((id) => !skip.has(id));
-        if (fresh.length) {
-          candidates = fresh;
-          break;
-        }
-      }
+  // The civs the next draw picks from: those left this round, or the whole pool once the round is over. With
+  // continuous freshness on, the last N civs drawn sit out. If that leaves nothing, fewer sit out, keeping the most
+  // recent ones out.
+  function drawCandidates() {
+    const pool = poolIds();
+    const remaining = remainingIds();
+    const left = remaining.length ? remaining : pool;
+    if (!settings.fresh || pool.length < 2) return left;
+    const recent = recentCivs(freshLimit(pool.length));
+    for (let n = recent.length; n > 0; n--) {
+      const skip = new Set(recent.slice(0, n));
+      const fresh = left.filter((id) => !skip.has(id));
+      if (fresh.length) return fresh;
     }
-    return candidates[rng.int(0, candidates.length - 1)];
+    return left;
+  }
+
+  // The next draw is picked ahead of time, so its jingle can load before the draw is revealed. Each time it's asked
+  // for, it's checked against the civs it can now be picked from and kept a fair pick from them, changing as little
+  // as it can, so editing the pool doesn't load jingle after jingle: when civs drop out, it stays unless it's one of
+  // them; when civs join, it moves to one of them with the chance a new pick would have had of landing on one; after
+  // any other change, such as a draw, it's picked again.
+  let ahead = { from: [], id: null };
+  function nextDraw() {
+    const from = drawCandidates();
+    const before = new Set(ahead.from);
+    const joined = from.filter((id) => !before.has(id));
+    const dropped = from.length - joined.length < ahead.from.length;
+    const pick = (ids) => ids[rng.int(0, ids.length - 1)];
+    let id = ahead.id;
+    if (!from.length || !rng) id = null;
+    else if (id === null || (joined.length && dropped)) id = pick(from);
+    else if (joined.length && rng.int(0, from.length - 1) >= ahead.from.length) id = pick(joined);
+    else if (!joined.length && !from.includes(id)) id = pick(from);
+    ahead = { from, id };
+    return id;
   }
 
   function closeRound() {
@@ -457,6 +492,8 @@ class MersenneTwister {
     }
   }
 
+  // The draw was picked ahead and its jingle loaded, so it's revealed at once: name, icon and jingle together. The
+  // render then picks the next draw and starts loading its jingle.
   function draw({ silent = false } = {}) {
     const pool = poolIds();
     if (!pool.length || !rng) {
@@ -465,13 +502,9 @@ class MersenneTwister {
       render();
       return;
     }
+    const id = nextDraw();
     recordUndo();
-    let left = remainingIds();
-    if (!left.length) {
-      closeRound();
-      left = pool;
-    }
-    const id = pickCiv(left, pool.length);
+    if (!remainingIds().length) closeRound();
     round().push([id, drawnCount() + 1, pool.length]);
     trimLog();
     commit();
@@ -800,9 +833,15 @@ class MersenneTwister {
     el.append(...kids);
     return el;
   }
-  function setSrc(img, src) {
-    if (SIMPLE) return;
-    if (img.getAttribute("src") !== src) img.src = src;
+  // Shows cell i of an atlas with rows of cols cells: the CSS draws the cell from --x and --y.
+  function setCell(el, i, cols) {
+    el.style.setProperty("--x", i % cols);
+    el.style.setProperty("--y", Math.floor(i / cols));
+  }
+  function atlasCell(className, i, cols) {
+    const el = h("span", { className });
+    setCell(el, i, cols);
+    return el;
   }
   function setText(el, text) {
     if (el.textContent !== text) el.textContent = text;
@@ -812,7 +851,7 @@ class MersenneTwister {
     client: $("client"),
     panel: $("panel"),
     tabs: [$("tab-0"), $("tab-1"), $("tab-2")],
-    civImg: $("civImg"),
+    civIcon: $("civIcon"),
     civName: $("civName"),
     counter: $("roundCounter"),
     drawnCount: $("drawnCount"),
@@ -820,7 +859,7 @@ class MersenneTwister {
     remainingCount: $("remainingCount"),
     remainingLog: $("remainingLog"),
     showRemaining: $("showRemaining"),
-    edImg: $("edImg"),
+    edIcon: $("editionIcon"),
     enabledCount: $("enabledCount"),
     autoToggle: $("autoToggle"),
     autoReset: $("autoReset"),
@@ -834,25 +873,21 @@ class MersenneTwister {
     const names = CIVS.filter((c) => c.dlc === dlc).map((c) => c.name);
     return `Toggles ${DLCS[dlc].name} civilisation${names.length === 1 ? "" : "s"}\n(${names.join(", ")})\nHotkey: ${DLC_KEYS[slot]}`;
   }
-  // The icon that stands in for a civ or DLC checkbox, with the off cross that shows while it's unchecked
-  function chkIcon(src, size) {
+  // The atlas cell that stands in for a civ or DLC checkbox, with the off cross that shows while it's unchecked
+  function chkIcon(className, i, cols, size) {
     if (SIMPLE) return "";
-    const img = (className, src) => h("img", { className, src, alt: "", width: size, height: size, decoding: "async" });
     return h("span", { className: "chk-icon", style: { width: size + "px", height: size + "px" } },
-      img("chk-face", src), img("chk-off", "images/ui/off.webp"));
+      atlasCell("chk-face sprite " + className, i, cols),
+      h("img", { className: "chk-off", src: "images/ui/off.webp", alt: "", width: size, height: size, decoding: "async" }));
   }
   function buildPoolControls() {
     // Edition rows sit where the desktop app's radio buttons are, with an icon in place of the radio circle.
     EDITIONS.forEach((ed, i) => {
       const info = EDITION_INFO[ed];
-      const img = (className, suffix) =>
-        h("img", { className, src: `images/dlc/${info.icon}${suffix}.webp`, alt: "", width: 28, height: 28 });
-      const icon = h("span", { className: "ed-icon" },
-        ...(SIMPLE ? [] : [img("s-normal", ""), img("s-hover", "_hover"), img("s-pressed", "_pressed")]));
       const button = h("button", {
-        type: "button", className: "imgbtn stateful edition", id: "ed" + ed, "aria-pressed": "false",
+        type: "button", className: "imgbtn edition", id: "ed" + ed, "aria-pressed": "false",
         dataset: { pick: ed, tip: `Selects the ${info.short} (${info.year}) civilisation pool\nHotkey: ${EDITION_KEYS[i]}` },
-      }, icon, `${info.short} (${info.year})`);
+      }, atlasCell("ed-icon sprite dlc-cell", 3 * i, DLC_ATLAS_COLS), `${info.short} (${info.year})`);
       Object.assign(button.style, { left: "10px", top: 36 + 30 * i + "px" });
       $("editionGroup").append(button);
       els.editionButtons.push(button);
@@ -862,7 +897,7 @@ class MersenneTwister {
       const input = h("input", { type: "checkbox" });
       input.addEventListener("change", () => toggleCiv(c.id));
       const label = h("label", { className: "chk icon-chk civ" },
-        input, chkIcon(`images/civ/${c.file}.webp`, 18), h("span", { className: "chk-name" }, c.name));
+        input, chkIcon("civ-cell", c.id, CIV_ATLAS_COLS, 18), h("span", { className: "chk-name" }, c.name));
       Object.assign(label.style, { left: GRID_COLS[i % 5] + "px", top: 210 + 20 * Math.floor(i / 5) + "px" });
       $("civGrid").append(label);
       civBoxes[c.id] = { label, input };
@@ -874,7 +909,7 @@ class MersenneTwister {
         const input = h("input", { type: "checkbox" });
         input.addEventListener("change", () => toggleDlc(dlc));
         const label = h("label", { className: "chk icon-chk", dataset: { tip: dlcTip(dlc, i) } },
-          input, chkIcon(`images/dlc/${DLCS[dlc].icon}.webp`, L.size), h("span", { className: "chk-name" }, DLCS[dlc].name));
+          input, chkIcon("dlc-cell", dlcCell(dlc), DLC_ATLAS_COLS, L.size), h("span", { className: "chk-name" }, DLCS[dlc].name));
         Object.assign(label.style, { left: L.left + "px", top: L.top + L.step * i + "px", height: L.size + "px", gap: L.gap + "px" });
         group.append(label);
         dlcBoxes[dlc] = input;
@@ -981,8 +1016,8 @@ class MersenneTwister {
   function buildLogBar(log) {
     const knob = h("div", { className: "sb-knob" });
     const track = h("div", { className: "sb-track" }, knob);
-    const up = h("div", { className: "sb-btn sb-up" }, h("span"));
-    const down = h("div", { className: "sb-btn sb-down" }, h("span"));
+    const up = h("div", { className: "sb-btn sb-up" });
+    const down = h("div", { className: "sb-btn sb-down" });
     const bar = h("div", { className: "sb", hidden: true, "aria-hidden": "true", dataset: { on: "1" } }, up, track, down);
     log.after(bar);
     logBars.set(log, { bar, track, knob });
@@ -1048,7 +1083,7 @@ class MersenneTwister {
 
     // Draw Civ tab
     $("civIcon").hidden = !settings.showIcon;
-    setSrc(els.civImg, cur ? `images/civ/${cur.file}.webp` : "images/civ/random.webp");
+    setCell(els.civIcon, cur ? cur.id : RANDOM_CELL, CIV_ATLAS_COLS);
     $("civIcon").setAttribute("aria-label", cur ? `${cur.name}: play the jingle` : "Random: play the jingle");
     setText(els.civName, ui.flash || (cur ? cur.name : "?"));
     els.civName.hidden = !settings.showName;
@@ -1071,7 +1106,7 @@ class MersenneTwister {
     const ed = state.edition;
     const info = EDITION_INFO[ed];
     for (const b of els.editionButtons) b.setAttribute("aria-pressed", String(b.dataset.pick === ed));
-    setSrc(els.edImg, `images/dlc/${info.banner}.webp`);
+    setCell(els.edIcon, EDITIONS.indexOf(ed), 1);
     $("editionIcon").setAttribute("aria-label", info.url ? `${info.series}: ${info.name} on Steam` : `About ${info.name}`);
     setText(els.enabledCount, `Enabled: ${n}/${editionTotal(ed)}`);
     els.autoToggle.checked = settings.autoToggle;
@@ -1090,6 +1125,9 @@ class MersenneTwister {
     $("shareBtn").dataset.tip = `Copies a share link with the currently selected civ pool and this round's draws\nHotkey: ${keyLabel("copyLink")}`;
     for (const k of document.querySelectorAll("kbd[data-key]")) setText(k, keyLabel(k.dataset.key));
     if (tipTarget) setText(els.tip, tipTarget.dataset.tip || "");
+
+    // The next draw may have changed, so its jingle starts loading.
+    loadNextJingles();
   }
 
   // ---- Dialogs ----
@@ -1424,7 +1462,8 @@ class MersenneTwister {
     });
     optForm.addEventListener("change", (e) => {
       const t = e.target;
-      if (t.name === "freshN") return;
+      // The slider changes the civs the next draw can be once it's let go.
+      if (t.name === "freshN") return loadNextJingles();
       if (t.name === "jingles") return setJingles(t.checked);
       if (t.name === "uiSounds") return setUiSounds(t.checked);
       if (t.name === "jingleType") {
@@ -1433,6 +1472,7 @@ class MersenneTwister {
         const c = currentCiv();
         if (!c || c.legacy) jingle(currentId());
         else sfx("view");
+        loadNextJingles();
         return;
       }
       if (t.name === "hotkeys") {
@@ -1532,17 +1572,13 @@ class MersenneTwister {
     if (!SIMPLE) buildLogBar(log);
   }
   // Load the images first shown on a hover, press, tab switch or dialog up front, so they don't flicker in.
+  // The icon atlases are among them, as hidden tabs don't load their CSS images.
   if (!SIMPLE) {
-    const early = ["tab1_hover", "tab2_hover", "button_pressed",
-      "link_textfield", "lobbycode_textfield",
-      "checkbox_unticked", "checkbox_ticked", "checkbox_unticked_pressed", "checkbox_ticked_pressed",
-      "dropdownbutton", "dropdownbutton_pressed", "xbutton", "xbutton_pressed", "external",
-      "cursor", "pointing_cursor", "slider_off", "slider_on", "slider_knob"];
-    for (const t of early) new Image().src = `images/ui/${t}.webp`;
-    for (const t of ["angle_topleft", "angle_topright", "angle_bottomleft", "angle_bottomright",
-      "edge_top", "edge_bottom", "edge_left", "edge_right", "inlay"]) new Image().src = `images/ui/panel_9slice/boxstyle3_${t}.png`;
-    for (const t of ["top-left", "top-right", "bottom-left", "bottom-right",
-      "top-edge", "bottom-edge", "left-edge", "right-edge", "inlay"]) new Image().src = `images/ui/log_9slice/${t}.webp`;
+    const early = ["ui/button_pressed", "ui/textfield_9slice", "ui/checkbox", "ui/dropdown_button", "ui/x_button",
+      "ui/external", "ui/cursor", "ui/cursor_pointing", "ui/slider", "ui/slider_knob", "ui/panel_9slice",
+      "ui/log_9slice", "ui/scrollbar_3slice", "ui/scrollbar_knob",
+      "civ/civicon_atlas", "dlc/dlc_atlas", "dlc/edition_banners_atlas"];
+    for (const t of early) new Image().src = `images/${t}.webp`;
   }
   bind();
 

@@ -50,7 +50,7 @@ body {
    window keep the system cursors. */
 :root:not([data-simple]) :is(.window, dialog.win) {
   --arrow: url("images/ui/cursor.webp") 0 0, default;
-  --hand: url("images/ui/pointing_cursor.webp") 1 0, pointer;
+  --hand: url("images/ui/cursor_pointing.webp") 1 0, pointer;
   cursor: var(--arrow);
 }
 .titlebar { height: 30px; display: flex; align-items: center; justify-content: space-between; padding-left: 10px; font: 12px var(--ui); }
@@ -109,15 +109,15 @@ body {
 .tab:hover { background: #d8eaf9; }
 .tab[aria-selected="true"] { z-index: 1; top: 0; height: 22px; padding: 0 8px; background: #fff; }
 .tab:focus-visible { outline: 1px dotted #000; outline-offset: -4px; }
-/* Parchment tabs: Draw Civ and Civ Pool use tab1, Log uses tab2. There's no selected image,
-   so the selected tab is bold at full brightness and the others are dimmed. */
+/* Parchment tabs: Draw Civ and Civ Pool use tab1, Log uses tab2. The tabs atlas has tab1 above tab2, each with its
+   normal look on the left and its hover look on the right. There's no selected image, so the selected tab is bold at
+   full brightness and the others are dimmed. */
 :root:not([data-simple]) .tab {
   top: 0; width: 70px; height: 25px; margin-right: -2px; padding: 0 0 3px; border: 0;
-  background: url("images/ui/tab1_normal.webp") center / 100% 100% no-repeat; filter: brightness(.88);
+  background: url("images/ui/tabs.webp") 0 0 / 200% 200% no-repeat; filter: brightness(.88);
 }
-:root:not([data-simple]) #tab-1 { background-image: url("images/ui/tab2_normal.webp"); }
-:root:not([data-simple]) .tab:hover { background-image: url("images/ui/tab1_hover.webp"); }
-:root:not([data-simple]) #tab-1:hover { background-image: url("images/ui/tab2_hover.webp"); }
+:root:not([data-simple]) #tab-1 { background-position-y: 100%; }
+:root:not([data-simple]) .tab:hover { background-position-x: 100%; }
 :root:not([data-simple]) .tab[aria-selected="true"] { z-index: 1; filter: none; font-weight: 600; }
 .panel { position: absolute; z-index: 1; inset: 0; }
 
@@ -143,25 +143,41 @@ body {
 :root:not([data-simple]) .btn:active { background-image: url("images/ui/button_pressed.webp"); }
 :root:not([data-simple]) .btn:focus-visible { outline-color: #f1deae; box-shadow: none; }
 .imgbtn { position: absolute; margin: 0; padding: 0; border: 0; background: none; cursor: var(--hand, pointer); }
-.imgbtn img { display: block; width: 100%; height: 100%; }
 .imgbtn:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
-.stateful img { position: absolute; inset: 0; }
-.stateful .s-hover, .stateful .s-pressed { visibility: hidden; }
-.stateful:hover .s-hover, .stateful:active .s-pressed,
-.stateful[aria-pressed="true"] .s-pressed { visibility: visible; }
+/* Sprites: ::before draws the whole of the element's atlas, a grid of --cols by --rows cells the size of the element,
+   and moves it so that cell (--x + --look, --y) lies over the element, which clips the rest. A background showing
+   just part of an image is shrunk without the smoothing a whole image gets, which leaves small icons jagged. The
+   script sets --x and --y for the icons, and --look steps along a row to a hover or pressed look. --cols and --rows
+   are the atlas's grid, as tools/atlas_builder.py prints it for the icon atlases. */
+:root:not([data-simple]) .sprite { overflow: hidden; }
+:root:not([data-simple]) .sprite::before {
+  content: ""; position: absolute; left: calc((var(--x, 0) + var(--look, 0)) * -100%); top: calc(var(--y, 0) * -100%);
+  width: calc(var(--cols) * 100%); height: calc(var(--rows) * 100%); background: var(--atlas) 0 0 / 100% 100% no-repeat;
+}
+.civ-cell { --atlas: url("images/civ/civicon_atlas.webp"); --cols: 8; --rows: 8; }
+.dlc-cell { --atlas: url("images/dlc/dlc_atlas.webp"); --cols: 6; --rows: 4; }
+#editionIcon { --atlas: url("images/dlc/edition_banners_atlas.webp"); --cols: 1; --rows: 3; }
+/* Parchment image buttons: each atlas has the button's looks side by side, normal first and pressed last, with the
+   options button's hover look between them. */
+#optionsBig { --atlas: url("images/ui/options_button.webp"); --cols: 3; --rows: 1; }
+#techBtn { --atlas: url("images/ui/techtree_button.webp"); --cols: 2; --rows: 1; }
+:is(#shareBtn, #poolShareBtn) { --atlas: url("images/ui/share_button.webp"); --cols: 2; --rows: 1; }
+#optionsBig:hover { --look: 1; }
+#optionsBig:active { --look: 2; }
+:is(#techBtn, #shareBtn, #poolShareBtn):active { --look: 1; }
 
 .label { position: absolute; margin: 0; white-space: nowrap; }
 .chk { position: absolute; display: flex; align-items: center; gap: 4px; white-space: nowrap; cursor: var(--hand, pointer); }
 .chk input { flex: none; margin: 0; cursor: var(--hand, pointer); }
 .chk img { flex: none; display: block; }
-/* Parchment checkboxes: wooden box images in place of the system checkbox, pressed while the label is held down. */
+/* Parchment checkboxes: wooden box images in place of the system checkbox, pressed while the label is held down.
+   The checkbox atlas has the unticked box above the ticked one, each with its pressed look on the right. */
 :root:not([data-simple]) input[type="checkbox"] {
   appearance: none; -webkit-appearance: none; flex: none; width: 16px; height: 16px; margin: 0; border: 0; border-radius: 0;
-  background: url("images/ui/checkbox_unticked.webp") center / 100% 100% no-repeat;
+  background: url("images/ui/checkbox.webp") 0 0 / 200% 200% no-repeat;
 }
-:root:not([data-simple]) input[type="checkbox"]:checked { background-image: url("images/ui/checkbox_ticked.webp"); }
-:root:not([data-simple]) label:active > input[type="checkbox"] { background-image: url("images/ui/checkbox_unticked_pressed.webp"); }
-:root:not([data-simple]) label:active > input[type="checkbox"]:checked { background-image: url("images/ui/checkbox_ticked_pressed.webp"); }
+:root:not([data-simple]) input[type="checkbox"]:checked { background-position-y: 100%; }
+:root:not([data-simple]) label:active > input[type="checkbox"] { background-position-x: 100%; }
 :root:not([data-simple]) input[type="checkbox"]:focus-visible { outline: 1px dotted #000; outline-offset: 1px; }
 /* The logs keep the arrow cursor rather than the text cursor. The script scrolls them for touch, so the browser's
    panning, with its momentum, is off. */
@@ -171,80 +187,35 @@ body {
   cursor: var(--arrow, default);
 }
 .log:focus-visible { outline: 1px solid var(--accent); border-color: var(--accent); }
-/* Parchment log panels: a sunken brown box built from the 6 px nine-slice parts. The parts are opaque, so each edge
-   can tile the whole length of its side under the corners. The transparent border keeps the scrollbar inside the
-   frame, and the padding keeps the text a little further in. */
+/* Parchment log panels: a sunken brown box drawn from the 6 px nine-slice, with its edges and middle tiled. The
+   transparent border keeps the scrollbar inside the frame, the padding keeps the text a little further in, and the
+   brown under the nine-slice is the colour of its middle. */
 :root:not([data-simple]) .log {
-  --slice: 6px;
-  border: var(--slice) solid transparent; padding: 6px 2px 6px 8px; color: #d9c69d;
-  background:
-    url("images/ui/log_9slice/top-left.webp") 0 0 / var(--slice) no-repeat border-box,
-    url("images/ui/log_9slice/top-right.webp") 100% 0 / var(--slice) no-repeat border-box,
-    url("images/ui/log_9slice/bottom-left.webp") 0 100% / var(--slice) no-repeat border-box,
-    url("images/ui/log_9slice/bottom-right.webp") 100% 100% / var(--slice) no-repeat border-box,
-    url("images/ui/log_9slice/top-edge.webp") 0 0 / var(--slice) repeat-x border-box,
-    url("images/ui/log_9slice/bottom-edge.webp") 0 100% / var(--slice) repeat-x border-box,
-    url("images/ui/log_9slice/left-edge.webp") 0 0 / var(--slice) repeat-y border-box,
-    url("images/ui/log_9slice/right-edge.webp") 100% 0 / var(--slice) repeat-y border-box,
-    url("images/ui/log_9slice/inlay.webp") 0 0 / var(--slice) repeat border-box;
+  border: 6px solid transparent; padding: 6px 2px 6px 8px; color: #d9c69d;
+  background: #615035; border-image: url("images/ui/log_9slice.webp") 6 fill repeat;
 }
 :root:not([data-simple]) .log:focus-visible { border-color: transparent; outline-color: #5a3d22; }
 /* Parchment log scrollbars: the script hides the browser's scrollbar on each log and lays one in the game's style
-   over the log's right side, in every browser. Its parts are drawn here: an up button, a track and a down button,
-   27 px wide, and a 21 px knob that runs the whole track. A log with a scrollbar keeps its text clear of it. */
+   over the log's right side, in every browser: an up button, a track and a down button, 27 px wide, and a 21 px knob
+   that runs the whole track. The scrollbar three-slice has the up button, the track and the down button from top to
+   bottom, and the track stretches its middle slice, whose columns are each nearly one colour. A log with a scrollbar
+   keeps its text clear of it. */
 :root:not([data-simple]) .log { scrollbar-width: none; }
 :root:not([data-simple]) .log::-webkit-scrollbar { display: none; }
 :root:not([data-simple]) .log.has-bar { padding-right: 29px; }
 .sb { position: absolute; width: 27px; touch-action: none; }
 .sb-btn { position: absolute; left: 0; width: 27px; height: 27px; }
-/* Up button: a light rim and bands over a tan face, in a dark frame. The full-width rows sit over the side columns,
-   and the side columns over the face's inner bands. */
-.sb-up {
-  top: 0;
-  background: linear-gradient(#c09359 0 3px, #cea167 3px 4px, #d4a76d 4px 5px, #b8894f 5px 20px, #cf9e5f 20px 21px, #d4a56c 21px 22px, #b68851 22px);
-  box-shadow:
-    inset 0 1px #a87a41, inset 0 2px #dcaf75,
-    inset 0 -1px #4a3117, inset 0 -2px #856444, inset 0 -3px #7d562f, inset 0 -4px #926537,
-    inset 1px 0 #765129, inset 2px 0 #835c35, inset 3px 0 #7c532a, inset 4px 0 #7c5124, inset 5px 0 #8c6031,
-    inset -1px 0 #78522f, inset -2px 0 #835b39, inset -3px 0 #7a522d, inset -4px 0 #7d562f, inset -5px 0 #8b6033;
-}
-/* Down button: dark at the top, light just below it, and darker at the base. */
-.sb-down {
-  bottom: 0;
-  background: linear-gradient(#d6b489 0 3px, #bd935f 3px 4px, #b98a51 4px 7px, #d7a46f 7px 8px, #bc8956 8px 9px, #b88852 9px 21px, #986d3e 21px);
-  box-shadow:
-    inset 0 1px #4b3314, inset 0 2px #846a47,
-    inset 0 -1px #654625, inset 0 -2px #795430, inset 0 -3px #815733, inset 0 -4px #744a26, inset 0 -5px #81562e,
-    inset 1px 0 #795430, inset 2px 0 #835b39, inset 3px 0 #7a502c, inset 4px 0 #7c5028, inset 5px 0 #8b5e34,
-    inset -1px 0 #78522f, inset -2px 0 #815c39, inset -3px 0 #7a522d, inset -4px 0 #7e542e, inset -5px 0 #8b5f2c;
-}
-/* The arrow: a gold triangle over a dark one shifted right and a light one shifted left, so it has a dark edge on
-   one slope and a highlight on the other. The down arrow is the up arrow turned around. */
-.sb-btn::before, .sb-btn > span, .sb-btn::after { content: ""; position: absolute; inset: 0; }
-.sb-btn::before { background: #dfa870; clip-path: polygon(12px 10.5px, 19.5px 19.5px, 3.5px 19.5px); }
-.sb-btn > span { background: #6a2c0e; clip-path: polygon(14.5px 10px, 22px 19.5px, 7px 19.5px); }
-.sb-btn::after { background: linear-gradient(#b27c37, #a06d24); clip-path: polygon(13px 11px, 19.5px 19.5px, 4.5px 19.5px); }
-.sb-down::before, .sb-down > span, .sb-down::after { transform: rotate(180deg); transform-origin: 13.5px 14.5px; }
-/* Track: the body's columns, dark in the middle with lighter rims */
-.sb-track {
-  position: absolute; top: 27px; bottom: 27px; left: 0; width: 27px;
-  background: linear-gradient(90deg, #7b4f2e 0 1px, #815a3b 1px 2px, #6e5036 2px 3px, #664f36 3px 4px, #624e35 4px 5px,
-    #614f35 5px 23px, #644d31 23px 24px, #705130 24px 25px, #7f5b37 25px 26px, #76532f 26px);
-}
-/* Knob: a tan block, light along the top and dark along the bottom and sides */
-.sb-knob {
-  position: absolute; left: 3px; width: 21px; height: 21px; background: #bb8d55;
-  box-shadow:
-    inset 0 1px #c79962, inset 0 2px #cc9e67,
-    inset 0 -1px #754d2d, inset 0 -2px #815731, inset 0 -3px #9f7244,
-    inset 1px 0 #7e522a, inset 2px 0 #8a5f35, inset 3px 0 #af8553,
-    inset -1px 0 #7c532a, inset -2px 0 #8c6230, inset -3px 0 #ab824c;
-}
+.sb-up { top: 0; }
+.sb-down { bottom: 0; }
+.sb-track { position: absolute; top: 27px; bottom: 27px; left: 0; width: 27px; }
+.sb-knob { position: absolute; left: 3px; width: 21px; height: 21px; }
+:root:not([data-simple]) :is(.sb-up, .sb-track, .sb-down) { background: url("images/ui/scrollbar_3slice.webp") 0 0 / 100% 300% no-repeat; }
+:root:not([data-simple]) .sb-track { background-position-y: 50%; }
+:root:not([data-simple]) .sb-down { background-position-y: 100%; }
+:root:not([data-simple]) .sb-knob { background: url("images/ui/scrollbar_knob.webp") 0 0 / 100% 100% no-repeat; }
 
 /* Positions in the 534x511 client area, as on the desktop app */
-#optionsBig { left: 60px; top: 54px; width: 83px; height: 72px; overflow: hidden; }
-/* The options art sits in wide transparent margins: scale it so the visible part is about 72 px. */
-#optionsBig img { inset: -14px auto auto -11px; width: 100px; height: 100px; }
+#optionsBig { left: 66px; top: 54px; width: 72px; height: 72px; }
 #civIcon { left: 217px; top: 165px; width: 104px; height: 104px; }
 #civName { left: 169px; top: 273px; width: 200px; text-align: center; font-size: 13px; font-weight: 600; }
 #drawBtn { left: 217px; top: 305px; width: 100px; height: 30px; }
@@ -264,6 +235,9 @@ body {
 .edition { display: flex; align-items: center; gap: 4px; width: 175px; height: 28px; font: inherit; color: #000; text-align: left; white-space: nowrap; }
 .ed-icon { position: relative; flex: none; width: 28px; height: 28px; }
 .edition[aria-pressed="true"] { font-weight: 600; }
+/* An edition's icon shows its hover look, or its pressed look while pressed or selected: the next two cells along. */
+:root:not([data-simple]) .edition:hover .ed-icon { --look: 1; }
+:root:not([data-simple]) :is(.edition:active, .edition[aria-pressed="true"]) .ed-icon { --look: 2; }
 /* The banner and count sit 10 px right of the desktop app's spot, so the bold selected edition name clears them. */
 #editionIcon { left: 200px; top: 30px; width: 128px; height: 93px; }
 #enabledCount { left: 210px; top: 140px; }
@@ -273,7 +247,7 @@ body {
    and screen readers. When off, the icon turns grey under the off cross. */
 :root:not([data-simple]) .icon-chk input { position: absolute; width: 1px; height: 1px; opacity: 0; pointer-events: none; }
 .chk-icon { position: relative; flex: none; }
-.chk-icon img { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: contain; }
+.chk-icon > * { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: contain; }
 .chk-off { visibility: hidden; transform: scale(.9); }
 .icon-chk input:not(:checked) ~ .chk-icon .chk-face { filter: grayscale(1); }
 .icon-chk input:not(:checked) ~ .chk-icon .chk-off { visibility: visible; }
@@ -292,14 +266,14 @@ body {
 :root:not([data-simple]) .civ:hover:has(input:not(:checked)) { background: #dc6a5c; }
 
 /* Simple mode (/simple): no images or sounds, so image buttons become text buttons. */
-[data-simple] .imgbtn img, [data-simple] .chk img, [data-simple] #civIcon, [data-simple] #editionIcon,
+[data-simple] .chk img, [data-simple] #civIcon, [data-simple] #editionIcon,
 [data-simple] #soundGroup { display: none !important; }
 [data-simple] #optionsBig, [data-simple] #techBtn, [data-simple] #shareBtn, [data-simple] #poolShareBtn {
   height: 30px; background: #e1e1e1; border: 1px solid #adadad; font: inherit; color: #000;
 }
 [data-simple] #optionsBig:hover, [data-simple] #techBtn:hover, [data-simple] #shareBtn:hover, [data-simple] #poolShareBtn:hover { background: #e5f1fb; border-color: var(--accent); }
 [data-simple] #optionsBig:active, [data-simple] #techBtn:active, [data-simple] #shareBtn:active, [data-simple] #poolShareBtn:active { background: #cce4f7; border-color: #005499; }
-[data-simple] #optionsBig { top: 60px; }
+[data-simple] #optionsBig { left: 60px; top: 60px; width: 83px; }
 [data-simple] #optionsBig::after { content: "Options"; }
 [data-simple] #techBtn { left: 374px; top: 406px; width: 80px; }
 [data-simple] #techBtn::after { content: "Tech Tree"; }
@@ -344,30 +318,18 @@ dialog.win::backdrop { background: rgba(0, 0, 0, .15); }
   padding: 13px; border: 0; box-shadow: none; filter: drop-shadow(0 12px 24px rgba(0, 0, 0, .35));
   background: none;
 }
-/* The frame is built from the 64 px nine-slice parts, each drawn --slice px square. An edge would tile the whole
-   length of its side and show through the corners' transparent parts, so each edge is clipped to the padding box
-   of a layer whose transparent border covers the corners: ::before draws the corners, the top and bottom edges
-   and the inlay, and ::after draws the side edges. The inlay reaches half a slice under the edges and corners,
-   whose inner halves are opaque, so a dialog with a fractional height leaves no gap where they meet. */
+/* The panel is drawn from the 64 px nine-slice, each part --slice px square: ::after draws the corners and the edges,
+   whose tiles round to fit between the corners, and ::before under it stretches the nine-slice's middle into the
+   inlay. The inlay reaches half a slice under the edges and corners, whose inner halves are opaque, so a dialog with
+   a fractional height leaves no gap where they meet. */
 :root:not([data-simple]) dialog.win::before, :root:not([data-simple]) dialog.win::after {
-  content: ""; position: absolute; z-index: -1; inset: 0; pointer-events: none;
+  content: ""; position: absolute; z-index: -1; pointer-events: none;
 }
 :root:not([data-simple]) dialog.win::before {
-  border-inline: var(--slice) solid transparent;
-  background:
-    url("images/ui/panel_9slice/boxstyle3_angle_topleft.png") 0 0 / var(--slice) no-repeat border-box,
-    url("images/ui/panel_9slice/boxstyle3_angle_topright.png") 100% 0 / var(--slice) no-repeat border-box,
-    url("images/ui/panel_9slice/boxstyle3_angle_bottomleft.png") 0 100% / var(--slice) no-repeat border-box,
-    url("images/ui/panel_9slice/boxstyle3_angle_bottomright.png") 100% 100% / var(--slice) no-repeat border-box,
-    url("images/ui/panel_9slice/boxstyle3_edge_top.png") 0 0 / var(--slice) repeat-x padding-box,
-    url("images/ui/panel_9slice/boxstyle3_edge_bottom.png") 0 100% / var(--slice) repeat-x padding-box,
-    url("images/ui/panel_9slice/boxstyle3_inlay.png") calc(var(--slice) / 2) calc(var(--slice) / 2) / calc(100% - var(--slice)) calc(100% - var(--slice)) no-repeat border-box;
+  inset: calc(var(--slice) / 2); background: url("images/ui/panel_9slice.webp") 50% 50% / 300% 300% no-repeat;
 }
 :root:not([data-simple]) dialog.win::after {
-  border-block: var(--slice) solid transparent;
-  background:
-    url("images/ui/panel_9slice/boxstyle3_edge_left.png") 0 0 / var(--slice) repeat-y padding-box,
-    url("images/ui/panel_9slice/boxstyle3_edge_right.png") 100% 0 / var(--slice) repeat-y padding-box;
+  inset: 0; border: var(--slice) solid transparent; border-image: url("images/ui/panel_9slice.webp") 64 / var(--slice) round;
 }
 :root:not([data-simple]) dialog.win .dlg-title { background: none; }
 :root:not([data-simple]) #dlgOptions .group { border-color: rgba(60, 40, 20, .35); }
@@ -379,11 +341,14 @@ dialog.win::backdrop { background: rgba(0, 0, 0, .15); }
 .dlg-title h2 { margin: 0; font: inherit; }
 .dlg-x { width: 46px; height: 30px; border: 0; background: none; font: 13px var(--ui); color: #000; cursor: pointer; }
 .dlg-x:hover { background: #e81123; color: #fff; }
-/* Parchment close buttons: the wooden x button in place of the ✕ glyph, with no hover change. */
+/* Parchment close buttons: the wooden x button in place of the ✕ glyph, with no hover change. The padding leaves a
+   17 px content box in the middle of the button, and the x button atlas, its normal look and then its pressed look,
+   is drawn only there. */
 :root:not([data-simple]) .dlg-x {
-  color: transparent; cursor: var(--arrow, default); background: url("images/ui/xbutton.webp") center / 17px 17px no-repeat;
+  padding: 6.5px 14.5px; color: transparent; cursor: var(--arrow, default);
+  background: url("images/ui/x_button.webp") 0 0 / 200% 100% no-repeat content-box;
 }
-:root:not([data-simple]) .dlg-x:active { background-image: url("images/ui/xbutton_pressed.webp"); }
+:root:not([data-simple]) .dlg-x:active { background-position-x: 100%; }
 .dlg-body { padding: 12px 14px 4px; }
 .dlg-body p { margin: 0 0 8px; }
 .dlg-buttons { display: flex; justify-content: flex-end; gap: 8px; padding: 8px 14px 14px; }
@@ -398,15 +363,18 @@ dialog select, dialog input[type="text"] {
   height: 22px; padding: 0 4px; border: 1px solid #7a7a7a; background: #fff; color: #000; font: inherit;
 }
 dialog select:disabled { color: #8a8a8a; border-color: #c4c4c4; }
-/* Parchment dropdowns: dark brown like the menus, with the wooden dropdown button as the arrow. */
+/* Parchment dropdowns: dark brown like the menus, with the wooden dropdown button as the arrow. The dropdown button
+   atlas has the button's normal look and then its pressed look. It's placed so that the look shown fills the right
+   16 px, and a brown layer over it covers the other look when that falls inside the box. */
 :root:not([data-simple]) dialog select {
   appearance: none; -webkit-appearance: none; padding: 0 22px 0 4px; border-color: #3d2c1c; border-radius: 0; color: #f1deae; cursor: var(--hand, pointer);
-  background: #65523b url("images/ui/dropdownbutton.webp") right center / 16px 100% no-repeat;
+  background: linear-gradient(#65523b, #65523b) 0 0 / calc(100% - 16px) 100% no-repeat,
+    #65523b url("images/ui/dropdown_button.webp") right -16px top 0 / 32px 100% no-repeat;
 }
 /* Each box fits its longest option, as a system dropdown does, so it keeps its width when the choice changes. */
 :root:not([data-simple]) dialog select[name="jingleType"] { width: 124px; }
 :root:not([data-simple]) dialog select[name="hotkeys"] { width: 120px; }
-:root:not([data-simple]) dialog select:active { background-image: url("images/ui/dropdownbutton_pressed.webp"); }
+:root:not([data-simple]) dialog select:active { background-position-x: 0, right; }
 :root:not([data-simple]) dialog select:disabled { opacity: .55; cursor: var(--arrow, default); }
 :root:not([data-simple]) dialog select:focus-visible { outline: 1px dotted #000; outline-offset: 1px; }
 :root:not([data-simple]) dialog option { background: #65523b; color: #f1deae; }
@@ -415,7 +383,7 @@ dialog select:disabled { color: #8a8a8a; border-color: #c4c4c4; }
 @supports (appearance: base-select) {
   :root:not([data-simple]) dialog select, :root:not([data-simple]) dialog select::picker(select) { appearance: base-select; }
   :root:not([data-simple]) dialog select { min-block-size: 0; align-items: center; }
-  :root:not([data-simple]) dialog select:open { background-image: url("images/ui/dropdownbutton_pressed.webp"); }
+  :root:not([data-simple]) dialog select:open { background-position-x: 0, right; }
   :root:not([data-simple]) dialog select::picker-icon, :root:not([data-simple]) dialog option::checkmark { display: none; }
   /* The list opens below the box unless it doesn't fit there, as a system dropdown does. */
   :root:not([data-simple]) dialog select::picker(select) {
@@ -425,30 +393,32 @@ dialog select:disabled { color: #8a8a8a; border-color: #c4c4c4; }
   :root:not([data-simple]) dialog option { min-block-size: 0; padding: 3px 6px; cursor: var(--hand, pointer); }
   :root:not([data-simple]) dialog option:hover, :root:not([data-simple]) dialog option:focus-visible { background: #dccb70; color: #000; outline: none; }
 }
-/* Parchment text fields in the share, lobby and open link dialogs: the dark textfield images, with white text. */
+/* Parchment text fields in the share, lobby and open link dialogs: dark boxes drawn from the 15 px nine-slice at about
+   half size, with white text. The nine-slice reaches past the 1 px border into the padding, and the grey under it is
+   the colour of its middle. */
 :root:not([data-simple]) :is(#sharePool, #shareRound, #lobbyCode, #openInput) {
-  padding: 0 6px; border: 0; border-radius: 0; color: #fff; background: center / 100% 100% no-repeat;
+  padding: 0 5px; border: 1px solid transparent; border-radius: 0; color: #fff;
+  background: #474747; border-image: url("images/ui/textfield_9slice.webp") 15 fill / 7px stretch;
 }
-:root:not([data-simple]) :is(#sharePool, #shareRound) { background-image: url("images/ui/link_textfield.webp"); }
-:root:not([data-simple]) :is(#lobbyCode, #openInput) { background-image: url("images/ui/lobbycode_textfield.webp"); }
 :root:not([data-simple]) #lobbyCode::placeholder { color: rgba(255, 255, 255, .45); }
 :root:not([data-simple]) :is(#sharePool, #shareRound, #lobbyCode, #openInput):focus-visible { outline: 1px dotted #000; outline-offset: 1px; }
 dialog input[type="range"] { width: 100%; margin: 2px 0; cursor: var(--arrow, default); }
 /* Parchment slider: the off track, with the on track over it up to the knob's centre, and the knob image as the
-   thumb. The knob travels along the track's groove, which runs from 32 to 308 px of the 340 px images, between the
-   arrowheads. The script sets --fill (0 to 1) to the slider's position. */
-:root:not([data-simple]) .slider {
-  position: relative; margin: 2px 0;
-  background: url("images/ui/slider_off.webp") 0 50% / 100% auto no-repeat;
+   thumb. The slider atlas has the off track above the on track, each 340x25 px: ::before and ::after draw them as wide
+   as the slider and centred on it. The knob travels along the track's groove, which runs from 32 to 308 px of the
+   340 px, between the arrowheads. The script sets --fill (0 to 1) to the slider's position. */
+:root:not([data-simple]) .slider { position: relative; margin: 2px 0; }
+:root:not([data-simple]) .slider::before, :root:not([data-simple]) .slider::after {
+  content: ""; position: absolute; left: 0; top: 50%; width: 100%; aspect-ratio: 340 / 25; transform: translateY(-50%);
+  background: url("images/ui/slider.webp") 0 0 / 100% 200% no-repeat;
 }
-:root:not([data-simple]) .slider::before {
-  content: ""; position: absolute; inset: 0;
-  background: url("images/ui/slider_on.webp") 0 50% / 100% auto no-repeat;
+:root:not([data-simple]) .slider::after {
+  background-position-y: 100%;
   clip-path: inset(0 calc(100% - 9.41% - 81.18% * var(--fill, 0)) 0 0);
 }
 :root:not([data-simple]) .slider:has(input:disabled) { opacity: .55; }
 :root:not([data-simple]) .slider input {
-  -webkit-appearance: none; appearance: none; position: relative; display: block;
+  -webkit-appearance: none; appearance: none; position: relative; z-index: 1; display: block;
   width: calc(81.18% + 24px); height: 24px; margin: 0 auto; background: none;
 }
 :root:not([data-simple]) .slider input:focus-visible { outline: 1px dotted #000; outline-offset: 1px; }
