@@ -470,16 +470,27 @@ kbd.key {
   .titlebar, .menubar, .frame { display: none; }
   .client { position: absolute; inset: 0 0 var(--tabbar); width: auto; height: auto; }
 
-  /* Hamburger menu: three bars in the button's text colour, which turns cream on brown while the menu is open, as
-     the desktop menus' titles do */
+  /* Hamburger menu: three bars in the button's text colour, drawn by ::before over the whole button, borders
+     included. In parchment mode the button is drawn from the 6 px button nine-slice, pressed while held down or
+     while the menu is open, with cream bars that brighten on hover as the text buttons' faces do. */
   #mobileMenu { position: fixed; z-index: 20; top: 10px; right: 12px; }
   #mobileMenu .menu-title {
-    width: 44px; height: 40px; padding: 0; color: #3d2c1c; cursor: var(--hand, pointer);
+    position: relative; width: 44px; height: 40px; padding: 0; background: none; color: #3d2c1c; cursor: var(--hand, pointer);
+  }
+  #mobileMenu .menu-title::before {
+    content: ""; position: absolute; inset: -1px;
     background: linear-gradient(currentColor 0 0) 50% 11px / 24px 3px no-repeat,
       linear-gradient(currentColor 0 0) 50% 18px / 24px 3px no-repeat, linear-gradient(currentColor 0 0) 50% 25px / 24px 3px no-repeat;
   }
   #mobileMenu.open .menu-title { background-color: #cce8ff; }
-  :root:not([data-simple]) #mobileMenu.open .menu-title { background-color: #65523b; color: #f1deae; }
+  :root:not([data-simple]) #mobileMenu .menu-title {
+    border: 6px solid transparent; color: #f1deae; border-image: url("images/ui/button_9slice.webp") 6 fill repeat;
+  }
+  :root:not([data-simple]) #mobileMenu .menu-title::before { inset: -6px; }
+  :root:not([data-simple]) #mobileMenu .menu-title:hover { color: #fff8e0; }
+  :root:not([data-simple]) #mobileMenu .menu-title:active,
+  :root:not([data-simple]) #mobileMenu.open .menu-title { background-color: transparent; border-image-source: url("images/ui/button_pressed_9slice.webp"); }
+  :root:not([data-simple]) #mobileMenu .menu-title:focus-visible { outline-color: #f1deae; }
   #mobileMenu .menu-list { top: calc(100% + 2px); left: auto; right: 0; min-width: 190px; }
   #mobileMenu .menu-list > :is(button, a) { padding: 10px 18px 10px 32px; font-size: 15px; }
 
@@ -516,7 +527,7 @@ kbd.key {
     grid-template: "counter" 40px "." 1fr "icon" auto "name" auto "." 1fr "hints" auto / minmax(0, 1fr);
     justify-items: center; padding-top: 10px; touch-action: none; -webkit-touch-callout: none;
   }
-  #roundCounter { grid-area: counter; justify-self: start; align-self: center; width: auto; }
+  #roundCounter { grid-area: counter; justify-self: start; align-self: center; width: auto; position: relative; left: 5px; top: 5px; }
   #civIcon { grid-area: icon; width: 144px; height: 144px; }
   #civName { grid-area: name; width: auto; max-width: 100%; font-size: 20px; }
   #swipeHints { grid-area: hints; text-align: center; color: #3d2c1c; }
