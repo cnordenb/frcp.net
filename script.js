@@ -307,19 +307,9 @@ class MersenneTwister {
     storageSet(KEY_SETTINGS, JSON.stringify(settings));
   }
 
-  // Ask once for storage that the browser won't clear on its own (Safari clears it after 7 days otherwise).
-  let persistAsked = false;
-  function askPersist() {
-    if (persistAsked) return;
-    persistAsked = true;
-    const st = navigator.storage;
-    if (st && st.persist && st.persisted) st.persisted().then((p) => p || st.persist()).catch(() => {});
-  }
-
   function commit() {
     ui.flash = null;
     saveState();
-    if (warmed) askPersist();
     render();
   }
 
