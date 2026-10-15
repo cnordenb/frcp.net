@@ -26,6 +26,9 @@
           <button type="button" role="menuitem" data-act="share"><span>Share ...</span><kbd></kbd></button>
           <button type="button" role="menuitem" data-act="openLink"><span>Open Link ...</span><kbd data-key="openLink"></kbd></button>
           <hr>
+          <button type="button" role="menuitem" data-act="savePreset"><span>Save Preset ...</span><kbd data-key="savePreset"></kbd></button>
+          <button type="button" role="menuitem" data-act="loadPreset"><span>Load Preset ...</span><kbd data-key="loadPreset"></kbd></button>
+          <hr>
           <button type="button" role="menuitem" data-act="quicksave"><span>Quicksave</span><kbd data-key="quicksave"></kbd></button>
           <button type="button" role="menuitem" data-act="quickload"><span>Quickload</span><kbd data-key="quickload"></kbd></button>
           <hr>
@@ -78,6 +81,8 @@
     <div class="menu mob" id="mobileMenu">
       <button type="button" class="menu-title" aria-expanded="false" aria-controls="menu-mobile" aria-label="Menu"></button>
       <div class="menu-list" id="menu-mobile" role="menu" hidden>
+        <button type="button" role="menuitem" data-act="savePreset"><span>Save Preset ...</span></button>
+        <button type="button" role="menuitem" data-act="loadPreset"><span>Load Preset ...</span></button>
         <button type="button" role="menuitem" data-act="options"><span>Options ...</span></button>
         <a role="menuitem" href="https://github.com/cnordenb/frcp_html" target="_blank" rel="noopener"><span>GitHub ...</span></a>
         <a role="menuitem" href="https://ko-fi.com/hjoerleif" target="_blank" rel="noopener"><span>Donate ...</span></a>
@@ -111,10 +116,10 @@
         <!-- Log tab -->
         <p class="label" id="drawnCount" data-on="1"></p>
         <button type="button" class="btn" id="clearLogBtn" data-on="1">Clear Log</button>
-        <textarea class="log" id="drawnLog" data-on="1" readonly aria-label="Drawn civs, newest first"></textarea>
+        <div class="log" id="drawnLog" data-on="1" role="region" tabindex="0" aria-label="Drawn civs, newest first"></div>
         <p class="label" id="remainingCount" data-on="1"></p>
         <label class="chk" id="showRemainingLabel" data-on="1"><input type="checkbox" id="showRemaining">Show</label>
-        <textarea class="log" id="remainingLog" data-on="1" readonly aria-label="Civs left to draw this round"></textarea>
+        <div class="log" id="remainingLog" data-on="1" role="region" tabindex="0" aria-label="Civs left to draw this round"></div>
         <button type="button" class="imgbtn" id="shareBtn" data-on="1" aria-label="Copy share link"></button>
 
         <!-- Civ Pool tab (the edition buttons and the civ and DLC toggles are added by the script) -->
@@ -131,6 +136,7 @@
     </div>
   </div>
   <div id="toast" role="status" aria-live="polite"></div>
+  <input type="file" id="presetFile" accept=".txt,text/plain" hidden>
 </main>
 
 <div id="tip" role="tooltip" hidden></div>

@@ -155,6 +155,7 @@ class MersenneTwister {
   const editionTotal = (ed) => CIVS.filter((c) => inEdition(c, ed)).length;
 
   const LOG_CAP = 256;
+  const PRESET_MAX_BYTES = 65536;
   const UNDO_CAP = 200;
   const KEY_SETTINGS = "frcp.settings";
   const KEY_STATE = "frcp.state";
@@ -171,7 +172,7 @@ class MersenneTwister {
       ["Tab", "cycleTab"], ["1", "tab0"], ["2", "tab1"], ["3", "tab2"],
       ["F1", "options"], ["F2", "hotkeys"], ["F3", "about"], ["F4", "techtree"],
       ["F5", "quicksave"], ["F9", "quickload"],
-      ["Ctrl+S", "copyLink"], ["Ctrl+R", "openLink"], ["Ctrl+F", "lobby"],
+      ["Ctrl+S", "savePreset"], ["Ctrl+R", "loadPreset"], ["P", "copyLink"], ["U", "openLink"], ["Ctrl+F", "lobby"],
       ["Ctrl+Z", "undo"], ["Ctrl+X", "redo"],
       ["Z", "quizName"], ["X", "quizIcon"], ["C", "quizCounter"], ["V", "quizJingles"], ["B", "quizUi"],
     ],
@@ -193,7 +194,8 @@ class MersenneTwister {
   const ACTION_TEXT = {
     cycleTab: "Cycle tabs", tab0: "Go to Draw Civ tab", tab1: "Go to Log tab", tab2: "Go to Civ Pool tab",
     options: "Open Options", hotkeys: "Open Hotkeys", about: "Open About", techtree: "Open Tech Tree",
-    quicksave: "Quicksave", quickload: "Quickload", copyLink: "Copy share link", openLink: "Open a share link",
+    quicksave: "Quicksave", quickload: "Quickload", savePreset: "Save preset", loadPreset: "Load preset",
+    copyLink: "Copy share link", openLink: "Open a share link",
     lobby: "Join Lobby", undo: "Undo a draw or reset", redo: "Redo",
     quizName: "Toggle civ name", quizIcon: "Toggle civ icon", quizCounter: "Toggle round counter",
     quizJingles: "Toggle civ jingles", quizUi: "Toggle UI sounds",
@@ -241,7 +243,7 @@ class MersenneTwister {
   }
 
   // The log is a list of rounds, oldest first. Each round lists its draws as [civ id, k, n],
-  // shown as "k/n - Civ". The last round is the current one.
+  // shown as "Civ (k/n)", or as just "Civ" where k is 0. The last round is the current one.
   function emptyState() {
     return { edition: EDITIONS[0], off: new Set(), log: [[]] };
   }
@@ -807,6 +809,93 @@ class MersenneTwister {
     toast("Quickloaded");
   }
 
+  // ---- Presets ----
+
+  // Preset files are the desktop app's .txt files: a section of every civ's name and on (1) or off (0), one of the
+  // civs drawn this round in draw order, one of the edition's ID and, with continuous freshness on, one of its
+  // history, oldest first and as many civs as could sit out of the pool. Lines end in CRLF, as the desktop app's do.
+  const PRESET_SECTIONS = new Map([["CivStates:", "states"], ["DrawnCivs:", "draws"], ["EditionState:", "edition"], ["ContfreshCivArray:", "history"]]);
+  function presetText() {
+    const names = (ids) => ids.map((id) => CIVS[id].name);
+    const lines = ["CivStates:", ...CIVS.map((c) => `${c.name} ${isOn(c.id) ? 1 : 0}`),
+      "DrawnCivs:", ...names(drawnIds().filter(isOn)), "EditionState:", state.edition];
+    if (settings.fresh) lines.push("ContfreshCivArray:", ...names(recentCivs(freshMax(poolIds().length)).reverse()));
+    return lines.map((line) => line + "\r\n").join("");
+  }
+  function presetFileName() {
+    const d = new Date();
+    const p = (n) => String(n).padStart(2, "0");
+    return `FRCP Preset v${VERSION}w @${d.getFullYear()}.${p(d.getMonth() + 1)}.${p(d.getDate())} ${p(d.getHours())}${p(d.getMinutes())}${p(d.getSeconds())}.txt`;
+  }
+  function savePreset() {
+    sfx("button");
+    const url = URL.createObjectURL(new Blob([presetText()], { type: "text/plain" }));
+    const a = h("a", { href: url, download: presetFileName() });
+    document.body.append(a);
+    a.click();
+    a.remove();
+    setTimeout(() => URL.revokeObjectURL(url), 10000);
+  }
+
+  // Reads a preset as the desktop app does: from every civ of the default edition on, through the sections in any
+  // order, to the first empty line, passing over names it doesn't know. Text with none of the sections isn't a preset.
+  function parsePreset(text) {
+    const preset = { edition: EDITIONS[0], off: new Set(), draws: [], history: [] };
+    const ids = new Map(CIVS.map((c) => [c.name, c.id]));
+    let section = null;
+    for (const raw of text.split(/\r?\n/)) {
+      const line = raw.trim();
+      if (!line) break;
+      if (PRESET_SECTIONS.has(line)) {
+        section = PRESET_SECTIONS.get(line);
+        continue;
+      }
+      const id = ids.get(line);
+      if (section === "states") {
+        const [name, on] = line.split(/\s+/);
+        if (ids.has(name) && parseInt(on, 10) === 0) preset.off.add(ids.get(name));
+      } else if (section === "draws" && id !== undefined) preset.draws.push(id);
+      else if (section === "history" && id !== undefined) preset.history.push(id);
+      else if (section === "edition" && EDITIONS.includes(line)) preset.edition = line;
+    }
+    return section ? preset : null;
+  }
+
+  // A loaded preset replaces the whole session, as on the desktop app: the pool and edition become the preset's, and
+  // its draws this round. The civs of its continuous freshness history from before this round go in a round of their
+  // own before it, without counts, as the file has none, so they keep sitting out of the next draws.
+  function applyPreset(preset) {
+    state.edition = preset.edition;
+    state.off = preset.off;
+    applyEdition(state);
+    const n = poolIds().length;
+    const draws = preset.draws.filter((id, i) => isOn(id) && preset.draws.indexOf(id) === i);
+    const earlier = preset.history.filter((id, i) => !draws.includes(id) && preset.history.lastIndexOf(id) === i);
+    state.log = [draws.map((id, i) => [id, i + 1, n])];
+    if (earlier.length) state.log.unshift(earlier.map((id) => [id, 0, 0]));
+    clearHistory();
+    commit();
+  }
+  function loadPreset() {
+    sfx("button");
+    const input = $("presetFile");
+    input.value = "";
+    input.click();
+  }
+  async function loadPresetFile(file) {
+    let preset = null;
+    try { preset = file.size <= PRESET_MAX_BYTES ? parsePreset(await file.text()) : null; } catch { preset = null; }
+    if (!preset) {
+      sfx("error");
+      msgBox("Preset not recognised", `${file.name} isn't a Fresh Random Civ Picker preset, so nothing has changed.`);
+      return;
+    }
+    applyPreset(preset);
+    if (settings.jingles) jingle(currentId());
+    else sfx("button");
+    toast("Preset loaded");
+  }
+
   // ---- Links out ----
 
   function openExternal(url) {
@@ -956,13 +1045,23 @@ class MersenneTwister {
 
   // ---- Render ----
 
-  function logText() {
-    const parts = [];
+  // The drawn log's rounds, newest first, each listing its draws newest first as [civ id, text]
+  function drawnRows() {
+    const rounds = [];
     for (let r = state.log.length - 1; r >= 0; r--) {
       const entries = state.log[r];
-      if (entries.length) parts.push(entries.map(([id, k, n]) => `${k}/${n} - ${CIVS[id].name}`).reverse().join("\n"));
+      if (entries.length) rounds.push(entries.map(([id, k, n]) => [id, k ? `${CIVS[id].name} (${k}/${n})` : CIVS[id].name]).reverse());
     }
-    return parts.join("\n\n");
+    return rounds;
+  }
+  // Fills a log with rounds of [civ id, text] rows, each led by the civ's icon, unless it shows those rows already
+  const logKeys = new Map();
+  function fillLog(log, rounds) {
+    const key = JSON.stringify(rounds);
+    if (logKeys.get(log) === key) return;
+    logKeys.set(log, key);
+    log.replaceChildren(...rounds.map((rows) => h("div", { className: "log-round" }, ...rows.map(([id, text]) =>
+      h("div", { className: "log-row" }, SIMPLE ? "" : atlasCell("log-icon sprite civ-cell", id, CIV_ATLAS_COLS), text)))));
   }
 
   // ---- Log scrollbars ----
@@ -1112,11 +1211,9 @@ class MersenneTwister {
     // Log tab
     setText(els.drawnCount, `Drawn: ${drawn}/${n}`);
     setText(els.remainingCount, `Remaining: ${left.length}/${n}`);
-    const logValue = logText();
-    if (els.drawnLog.value !== logValue) els.drawnLog.value = logValue;
+    fillLog(els.drawnLog, drawnRows());
     const leftSet = new Set(left);
-    const remainingValue = DISPLAY_ORDER.filter((c) => leftSet.has(c.id)).map((c) => c.name).join("\n");
-    if (els.remainingLog.value !== remainingValue) els.remainingLog.value = remainingValue;
+    fillLog(els.remainingLog, [DISPLAY_ORDER.filter((c) => leftSet.has(c.id)).map((c) => [c.id, c.name])]);
     els.showRemaining.checked = settings.showRemaining;
     els.remainingLog.hidden = !settings.showRemaining;
     for (const log of logBars.keys()) paintLogBar(log);
@@ -1334,7 +1431,8 @@ class MersenneTwister {
     cycleTab: () => setTab((ui.tab + 1) % 3),
     tab0: () => setTab(0), tab1: () => setTab(1), tab2: () => setTab(2),
     options: openOptions, hotkeys: openHotkeys, about: openAbout, techtree: openTechTree,
-    quicksave, quickload, copyLink: copyShareLink, share: openShare, openLink: openLinkDialog, lobby: openLobby,
+    quicksave, quickload, savePreset, loadPreset,
+    copyLink: copyShareLink, share: openShare, openLink: openLinkDialog, lobby: openLobby,
     undo, redo,
     quizName: () => toggleSetting("showName"),
     quizIcon: () => toggleSetting("showIcon"),
@@ -1590,6 +1688,7 @@ class MersenneTwister {
     $("shareBtn").addEventListener("click", () => copyShareLink(true));
     $("poolShareBtn").addEventListener("click", () => copyShareLink(false));
     $("clearLogBtn").addEventListener("click", clearLog);
+    $("presetFile").addEventListener("change", (e) => { if (e.target.files[0]) loadPresetFile(e.target.files[0]); });
     els.showRemaining.addEventListener("change", () => toggleSetting("showRemaining"));
     for (const b of els.editionButtons) b.addEventListener("click", () => setEdition(b.dataset.pick));
     $("editionIcon").addEventListener("click", openEditionPage);

@@ -202,11 +202,17 @@ body {
 /* The logs keep the arrow cursor rather than the text cursor. The script scrolls them for touch, so the browser's
    panning, with its momentum, is off. */
 .log {
-  position: absolute; margin: 0; padding: 2px 4px; resize: none; border: 1px solid #7a7a7a;
+  position: absolute; margin: 0; padding: 2px 4px; overflow: hidden auto; border: 1px solid #7a7a7a;
   background: #fff; color: #000; font: 12px/1.35 var(--ui); user-select: text; -webkit-user-select: text; touch-action: none;
   cursor: var(--arrow, default);
 }
 .log:focus-visible { outline: 1px solid var(--accent); border-color: var(--accent); }
+/* Log rows: each civ's icon, at the size of the Civ Pool tab's, leads its line, and a blank line parts the rounds.
+   The parchment logs' lines are tall enough for the icons. */
+.log-row { display: flex; align-items: center; gap: 4px; }
+.log-icon { position: relative; flex: none; width: 18px; height: 18px; }
+.log-round + .log-round { margin-top: 1lh; }
+:root:not([data-simple]) .log { line-height: 20px; }
 /* Parchment log panels: a sunken brown box drawn from the 6 px nine-slice, with its edges and middle tiled. The
    transparent border keeps the scrollbar inside the frame, the padding keeps the text a little further in, and the
    brown under the nine-slice is the colour of its middle. */
