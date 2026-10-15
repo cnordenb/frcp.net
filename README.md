@@ -10,5 +10,11 @@ Fresh Random Civ Picker in the browser. Ported to HTML, CSS and JavaScript from 
 - Example, a civ pool of AoK civs: https://frcp.net/#p=1Cg4QBAgiAl8
 - Example, civ pool + draw log: https://frcp.net/#p=1Cg4QBBgiAl8.yQwJK1pF
 
+## Tests
+- Run `npm test` with Node.js 22 or newer. There's nothing to install.
+- Covers the civ data and its icons, atlases and jingles, saved state, drawing and continuous freshness, share links and preset files.
+- The compatibility tests also compare data.json with the [desktop version](https://github.com/cnordenb/Fresh-Random-Civ-Picker_GUI)'s when its repository sits next to this one, or at `FRCP_DESKTOP_DIR`.
+- GitHub Actions runs them on every push.
+
 ## Microsoft assets
 Age of Empires II © Microsoft Corporation. Fresh Random Civ Picker ([frcp.net](https://frcp.net/)) was created under Microsoft's "[Game Content Usage Rules](https://www.xbox.com/en-US/developers/rules)" using assets from Age of Empires II: The Age of Kings, Age of Empires II: HD Edition, and Age of Empires II: Definitive Edition, and it is not endorsed by or affiliated with Microsoft.

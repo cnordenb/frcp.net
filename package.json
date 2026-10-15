@@ -1,0 +1,9 @@
+{
+  "name": "frcp-html",
+  "private": true,
+  "description": "Fresh Random Civ Picker in the browser (frcp.net)",
+  "type": "module",
+  "scripts": {
+    "test": "node --test tests/*.test.js"
+  }
+}

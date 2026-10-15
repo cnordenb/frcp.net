@@ -1,0 +1,32 @@
+name: Tests
+
+on:
+  push:
+  pull_request:
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      # The compatibility tests compare data.json and MAX_CIVS with the desktop app's. Its data.json is on
+      # working_branch_1 for now: switch the ref to master once it's merged. Without the checkout, those tests skip.
+      - uses: actions/checkout@v4
+        continue-on-error: true
+        with:
+          repository: cnordenb/Fresh-Random-Civ-Picker_GUI
+          ref: working_branch_1
+          path: desktop
+          sparse-checkout: |
+            Fresh-Random-Civ-Picker_CPPGUI/data.json
+            Fresh-Random-Civ-Picker_CPPGUI/CivDataLimits.h
+          sparse-checkout-cone-mode: false
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+
+      - run: npm test
+        env:
+          FRCP_DESKTOP_DIR: desktop
