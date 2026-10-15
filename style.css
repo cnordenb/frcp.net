@@ -596,7 +596,9 @@ kbd.key {
   #poolShareBtn { grid-area: share; align-self: center; }
   #autoResetLabel { grid-area: reset; }
 
-  #toast { position: fixed; top: auto; bottom: calc(var(--tabbar) + 12px); margin-top: 0; }
+  /* The status message sits its own height lower than 12 px over the tab bar, below the phone's own message on a
+     copy, so it reaches over the tab bar's top edge. */
+  #toast { position: fixed; z-index: 11; top: auto; bottom: calc(var(--tabbar) + 12px); margin-top: 0; transform: translate(-50%, 100%); }
 
   /* Dialogs fit the screen in one column and close from their own buttons. */
   .dlg-x { display: none; }
