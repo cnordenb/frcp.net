@@ -511,6 +511,10 @@ class MersenneTwister {
   // Re-rolling swaps the current civ for another of the civs it was drawn from. Those are nearly always among the
   // next draw's civs, so the next draw ahead usually stands, and the swap is revealed as quickly as a draw. The
   // swapped-out civ goes back into the round, so it can still come up later.
+  //
+  // The swap stands in for the draw rather than following it, so neither undo nor continuous freshness records it:
+  // the log keeps only the civ the swaps end on, and undoing goes back to before the draw. It still clears redo, which
+  // would otherwise undo the swap.
   function rerollCivs() {
     const entries = round();
     const current = entries[entries.length - 1];
@@ -526,7 +530,7 @@ class MersenneTwister {
       sfx("error");
       return;
     }
-    recordUndo();
+    undoStacks.redo.length = 0;
     const entries = round();
     entries.pop();
     const id = nextDraw(others);
@@ -536,7 +540,7 @@ class MersenneTwister {
     else sfx("button");
   }
 
-  // Undo and redo cover draws and resets for this visit. Changing the pool clears them.
+  // Undo and redo cover draws and resets for this visit, but not re-rolls. Changing the pool clears them.
   const snapshot = () => JSON.stringify(state.log);
   function recordUndo() {
     undoStacks.undo.push(snapshot());
