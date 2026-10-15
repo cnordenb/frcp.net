@@ -1,4 +1,4 @@
-# frcp_html - [frcp.net](https://frcp.net/)
+# [frcp.net](https://frcp.net/)
 
 Fresh Random Civ Picker in the browser. Ported to HTML, CSS and JavaScript from the [C++ Windows GUI version](https://github.com/cnordenb/Fresh-Random-Civ-Picker_GUI).
 
