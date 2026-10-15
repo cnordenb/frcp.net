@@ -10,5 +10,8 @@ Fresh Random Civ Picker in the browser. Ported to HTML, CSS and JavaScript from 
 - Example, a civ pool of AoK civs: https://frcp.net/#p=1Cg4QBAgiAl8
 - Example, civ pool + draw log: https://frcp.net/#p=1Cg4QBBgiAl8.yQwJK1pFL
 
+## Font
+The frcp.net title is set in [Alegreya](https://github.com/huertatipografica/Alegreya) Bold, Copyright 2011 The Alegreya Project Authors, under the SIL Open Font License 1.1 ([fonts/OFL.txt](fonts/OFL.txt)).
+
 ## Microsoft assets
 Age of Empires II © Microsoft Corporation. Fresh Random Civ Picker ([frcp.net](https://frcp.net/)) was created under Microsoft's "[Game Content Usage Rules](https://www.xbox.com/en-US/developers/rules)" using assets from Age of Empires II: The Age of Kings, Age of Empires II: HD Edition, and Age of Empires II: Definitive Edition, and it is not endorsed by or affiliated with Microsoft.

@@ -1,6 +1,7 @@
 :root {
   --page: #dfe4ea;
   --page-ink: #2b333d;
+  --title-ink: #1e2a2f;
   --frame: #8d97a3;
   --face: #f0f0f0;
   --line: #d9d9d9;
@@ -11,6 +12,7 @@
   :root {
     --page: #1c2026;
     --page-ink: #dfe4ea;
+    --title-ink: #e3e7e2;
     --frame: #4b5560;
   }
 }
@@ -25,6 +27,19 @@ body {
   background: var(--page); color: var(--page-ink); font: 12px/1.35 var(--ui);
 }
 .noscript { margin: 0; padding: 0 16px; font-size: 18px; text-align: center; }
+
+/* The site's name at the top left of the page, in the type, colours and place of aoe2vils.net's title on a wide screen:
+   Alegreya Bold at 1.55rem, in a column up to 92rem wide with 1rem margins, centred in a 35.75 px row .7rem from the
+   top. In a browser window too small for both, the window covers it.
+   Alegreya: Copyright 2011 The Alegreya Project Authors (https://github.com/huertatipografica/Alegreya), under the
+   SIL Open Font License 1.1 (fonts/OFL.txt). */
+@font-face {
+  font-family: Alegreya; font-weight: 700; font-display: block; src: url("fonts/alegreya-bold.woff2") format("woff2");
+}
+.site-title {
+  position: absolute; left: 0; right: 0; top: calc(.7rem + (35.75px - 1.1em) / 2); max-width: 92rem; margin: 0 auto; padding: 0 1rem;
+  font: 700 1.55rem/1.1 Alegreya, Georgia, "Times New Roman", serif; letter-spacing: -.01em; color: var(--title-ink);
+}
 
 /* Window replica */
 .window {
