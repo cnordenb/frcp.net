@@ -530,17 +530,19 @@ kbd.key {
      all but the log scrollbars, which the script places, and the sprites, whose images hang off their own box. */
   .panel { display: grid; gap: 6px 10px; padding: 58px 14px 10px; }
   .panel > :not(.sb) { position: static; }
-  :root :is(#civIcon, #editionIcon, #shareBtn, #poolShareBtn) { position: relative; left: auto; top: auto; }
+  :root :is(#civIcon, #civGhost, #editionIcon, #shareBtn, #poolShareBtn) { position: relative; left: auto; top: auto; }
   [data-simple] :is(#shareBtn, #poolShareBtn) { width: 60px; }
 
   /* Draw Civ tab: the round counter level with the menu button, the civ in the middle and the swipe hints at the
-     bottom. touch-action: none keeps the browser from scrolling, zooming or reloading the page on a swipe. */
+     bottom. touch-action: none keeps the browser from scrolling, zooming or reloading the page on a swipe. The swipe
+     ghost shares the civ icon's place, so the script moves both from there. */
   .client[data-tab="0"] .panel {
     grid-template: "counter" 40px "." 1fr "icon" auto "name" auto "." 1fr "hints" auto / minmax(0, 1fr);
     justify-items: center; padding-top: 10px; touch-action: none; -webkit-touch-callout: none;
   }
   #roundCounter { grid-area: counter; justify-self: start; align-self: center; width: auto; position: relative; left: 5px; top: 5px; }
-  #civIcon { grid-area: icon; width: 144px; height: 144px; }
+  #civIcon, #civGhost { grid-area: icon; width: 144px; height: 144px; }
+  #civGhost { pointer-events: none; }
   #civName { grid-area: name; width: auto; max-width: 100%; font-size: 20px; }
   #swipeHints { grid-area: hints; text-align: center; color: #3d2c1c; }
   #swipeHints p { margin: 0; line-height: 1.7; }

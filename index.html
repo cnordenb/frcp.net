@@ -95,6 +95,8 @@
         <!-- Draw Civ tab (the Log tab shares the icon, name, Draw and Reset). On phones it has no buttons: swipes draw. -->
         <button type="button" class="imgbtn sprite desk" id="optionsBig" data-on="0" aria-label="Options"></button>
         <button type="button" class="imgbtn sprite civ-cell" id="civIcon" data-on="0 1" hidden></button>
+        <!-- On phones, the second civ icon that a swipe slides in or out -->
+        <span class="sprite civ-cell mob" id="civGhost" data-on="0" aria-hidden="true" hidden></span>
         <p class="label" id="civName" data-on="0 1" aria-live="polite">?</p>
         <button type="button" class="btn desk" id="drawBtn" data-on="0 1">Draw</button>
         <button type="button" class="btn desk" id="resetBtn" data-on="0 1">Reset</button>

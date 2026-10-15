@@ -511,21 +511,23 @@ class MersenneTwister {
   // Re-rolling swaps the current civ for another of the civs it was drawn from. Those are nearly always among the
   // next draw's civs, so the next draw ahead usually stands, and the swap is revealed as quickly as a draw. The
   // swapped-out civ goes back into the round, so it can still come up later.
-  function reroll() {
+  function rerollCivs() {
     const entries = round();
     const current = entries[entries.length - 1];
-    if (!current || !rng) {
-      sfx("error");
-      return;
-    }
+    if (!current || !rng) return null;
     entries.pop();
     const others = drawCandidates().filter((id) => id !== current[0]);
     entries.push(current);
-    if (!others.length) {
+    return others.length ? others : null;
+  }
+  function reroll() {
+    const others = rerollCivs();
+    if (!others) {
       sfx("error");
       return;
     }
     recordUndo();
+    const entries = round();
     entries.pop();
     const id = nextDraw(others);
     entries.push([id, drawnCount() + 1, poolIds().length]);
@@ -864,6 +866,7 @@ class MersenneTwister {
     panel: $("panel"),
     tabs: [$("tab-0"), $("tab-1"), $("tab-2")],
     civIcon: $("civIcon"),
+    civGhost: $("civGhost"),
     civName: $("civName"),
     counter: $("roundCounter"),
     drawnCount: $("drawnCount"),
@@ -1393,34 +1396,162 @@ class MersenneTwister {
 
   // In the phone layout, the Draw Civ tab has no buttons: a swipe left draws, right undoes, up re-rolls and down
   // resets. A swipe acts when the finger lifts, as browsers allow sound from that but not from the press or the
-  // move. A tap still reaches the civ icon, and a mouse drag that ends on it isn't taken for a click.
+  // move. A tap still reaches the civ icon, and a drag that ends on it isn't taken for a click.
+  //
+  // The first few pixels of a move settle the swipe's axis, and from then on the icons follow the finger along it,
+  // pixel for pixel. A swipe left takes the current icon towards the parchment's left edge, fading it out on the
+  // way, and the drawn civ shows up when the finger lifts, with its name and jingle. The other swipes bring in the
+  // civ they lead to, fading in from the parchment's edge while the current icon fades out in place: right brings
+  // the undone civ from the left edge, down the random icon from the top and up the re-rolled civ from the bottom.
+  // A finger lifted short of a swipe takes the icons back, and one lifted past it lets them glide the rest of the way,
+  // starting at the finger's speed. A swipe with nothing to do, such as undoing with nothing to undo, moves nothing.
   //
   // Touch moves are cancelled everywhere but in the civ list, the one part of the layout the browser scrolls.
   // Otherwise Chrome takes a quick swipe for a fling, even with nothing to scroll, and drops the tap that follows it.
   const PHONE = matchMedia("(max-width: 609px)");
   const SWIPE_MIN = 40;
+  const SWIPE_SLOP = 10;
+  const SWIPE_ACTS = { draw: () => draw(), undo, reroll, reset };
+  // The parchment edge that each swipe's moving icon leaves by or comes from
+  const SWIPE_EDGE = { draw: [-1, 0], undo: [-1, 0], reset: [0, -1], reroll: [0, 1] };
+  const swipeKind = (axis, d) => (axis === "x" ? (d < 0 ? "draw" : "undo") : (d < 0 ? "reroll" : "reset"));
+  const iconCell = (id) => (id === null ? RANDOM_CELL : id);
+
+  // The icon cell of the civ a swipe leads to, or null when the swipe has nothing to do
+  function swipeCell(kind) {
+    if (kind === "draw") return poolIds().length && rng ? nextDraw() : null;
+    if (kind === "reset") return round().length ? RANDOM_CELL : null;
+    if (kind === "reroll") {
+      const others = rerollCivs();
+      return others ? nextDraw(others) : null;
+    }
+    const snap = undoStacks.undo[undoStacks.undo.length - 1];
+    if (!snap) return null;
+    const log = JSON.parse(snap);
+    const r = log[log.length - 1];
+    return iconCell(r.length ? r[r.length - 1][0] : null);
+  }
+
   function bindSwipes() {
-    let start = null;
+    const icon = els.civIcon;
+    const ghost = els.civGhost;
+    let swipe = null;
+    let glide = 0;
     let ignoreClickUntil = 0;
+
+    function rest() {
+      cancelAnimationFrame(glide);
+      glide = 0;
+      for (const el of [icon, ghost]) {
+        el.style.transform = "";
+        el.style.opacity = "";
+      }
+      ghost.hidden = true;
+    }
+    // How far a swipe's moving icon travels: from the civ icon's place to the parchment's edge
+    function travel(kind) {
+      const d = kind === "reset" ? icon.offsetTop
+        : kind === "reroll" ? els.panel.clientHeight - icon.offsetTop - icon.offsetHeight
+        : icon.offsetLeft;
+      return Math.max(1, d);
+    }
+    // Sets what the swipe does from the way it now points, and the civ the ghost shows coming in
+    function aim(s, kind) {
+      if (kind === s.kind) return;
+      rest();
+      const cell = swipeCell(kind);
+      Object.assign(s, { kind, moves: cell !== null && !SIMPLE && settings.showIcon, travel: travel(kind) });
+      if (s.moves) setCell(ghost, cell, CIV_ATLAS_COLS);
+    }
+    // Places the icons for the swipe's progress s.t, from 0 to s.travel. Until the swipe acts, the civ icon shows the
+    // current civ and the ghost the civ coming in. Acting puts the new civ on the civ icon, so the two swap places.
+    function paint(s) {
+      if (!s.moves) return;
+      const p = s.t / s.travel;
+      const [ex, ey] = SWIPE_EDGE[s.kind];
+      const place = (el, k, opacity) => {
+        el.style.transform = k ? `translate(${ex * k}px, ${ey * k}px)` : "";
+        el.style.opacity = opacity;
+      };
+      const [current, next] = s.acted ? [ghost, icon] : [icon, ghost];
+      if (s.kind === "draw") {
+        place(current, s.t, 1 - p);
+        if (s.acted) place(next, 0, 1);
+      } else {
+        place(current, 0, 1 - p);
+        place(next, s.travel - s.t, p);
+      }
+      ghost.hidden = s.kind === "draw" && !s.acted;
+    }
+    function follow(s, e) {
+      s.d = s.axis === "x" ? e.clientX - s.x : e.clientY - s.y;
+      s.trail.push([e.timeStamp, s.d]);
+      while (s.trail.length > 2 && e.timeStamp - s.trail[0][0] > 100) s.trail.shift();
+      aim(s, swipeKind(s.axis, s.d));
+      s.t = Math.min(Math.abs(s.d), s.travel);
+      paint(s);
+    }
+    // Takes the swipe's progress to `to`, starting at the finger's speed over its last 100 ms and slowing to a stop.
+    // The ease-out starts at twice its average speed, hence the doubled distance.
+    function glideTo(s, to) {
+      if (!s.moves) return;
+      const [t0, d0] = s.trail[0];
+      const [t1, d1] = s.trail[s.trail.length - 1];
+      const speed = t1 > t0 ? Math.abs(d1 - d0) / (t1 - t0) : 0;
+      const from = s.t;
+      const ms = Math.min(350, Math.max(80, 2 * Math.abs(to - from) / Math.max(speed, 0.1)));
+      const start = performance.now();
+      const frame = (now) => {
+        const k = Math.min(1, Math.max(0, (now - start) / ms));
+        s.t = from + (to - from) * (1 - (1 - k) ** 2);
+        paint(s);
+        if (k < 1) glide = requestAnimationFrame(frame);
+        else rest();
+      };
+      glide = requestAnimationFrame(frame);
+    }
+
     els.panel.addEventListener("pointerdown", (e) => {
       ignoreClickUntil = 0;
+      rest();
       const swipeable = PHONE.matches && ui.tab === 0 && e.isPrimary && e.button === 0 && !openMenuEl;
-      start = swipeable ? { x: e.clientX, y: e.clientY } : null;
+      swipe = swipeable ? { id: e.pointerId, x: e.clientX, y: e.clientY, axis: null, kind: null, trail: [] } : null;
+    });
+    document.addEventListener("pointermove", (e) => {
+      const s = swipe;
+      if (!s || e.pointerId !== s.id) return;
+      if (!s.axis) {
+        const dx = e.clientX - s.x;
+        const dy = e.clientY - s.y;
+        if (Math.max(Math.abs(dx), Math.abs(dy)) < SWIPE_SLOP) return;
+        s.axis = Math.abs(dx) > Math.abs(dy) ? "x" : "y";
+      }
+      follow(s, e);
     });
     document.addEventListener("pointerup", (e) => {
-      if (!start || !e.isPrimary) return;
-      const dx = e.clientX - start.x;
-      const dy = e.clientY - start.y;
-      start = null;
-      if (Math.max(Math.abs(dx), Math.abs(dy)) < SWIPE_MIN) return;
+      const s = swipe;
+      if (!s || e.pointerId !== s.id) return;
+      swipe = null;
+      if (!s.axis) return;
       ignoreClickUntil = performance.now() + 500;
-      if (Math.abs(dx) > Math.abs(dy)) {
-        if (dx < 0) draw();
-        else undo();
-      } else if (dy < 0) reroll();
-      else reset();
+      follow(s, e);
+      if (Math.abs(s.d) < SWIPE_MIN) {
+        glideTo(s, 0);
+        return;
+      }
+      const before = iconCell(currentId());
+      SWIPE_ACTS[s.kind]();
+      if (!s.moves) return;
+      s.acted = true;
+      setCell(ghost, before, CIV_ATLAS_COLS);
+      glideTo(s, s.travel);
     });
-    document.addEventListener("pointercancel", () => { start = null; });
+    document.addEventListener("pointercancel", (e) => {
+      const s = swipe;
+      if (!s || e.pointerId !== s.id) return;
+      swipe = null;
+      if (s.axis) glideTo(s, 0);
+    });
     els.panel.addEventListener("click", (e) => {
       if (performance.now() > ignoreClickUntil) return;
       ignoreClickUntil = 0;
