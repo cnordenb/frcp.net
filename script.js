@@ -222,13 +222,16 @@ import { MersenneTwister, createLogic } from "./logic.js";
   function jingle(id) {
     if (settings.jingles) playUrl(jingleUrl(id));
   }
-  // Of the jingles, only the two that a draw or a reset plays next are loaded ahead: the next draw's and the random
-  // one. The others load when they're played.
-  function loadNextJingles() {
-    if (SIMPLE || !settings.jingles) return;
-    audioFor(jingleUrl(null));
+  // Of the jingles and the big civ icons, only the ones that a draw or a reset plays and shows next are loaded ahead:
+  // the next draw's and the random ones. The others load when they're played or shown.
+  function loadAhead() {
+    if (SIMPLE || !(settings.jingles || settings.showIcon)) return;
     const id = nextDraw();
-    if (id !== null) audioFor(jingleUrl(id));
+    if (settings.jingles) {
+      audioFor(jingleUrl(null));
+      if (id !== null) audioFor(jingleUrl(id));
+    }
+    if (settings.showIcon) preload(iconName(RANDOM_CELL), ...(id === null ? [] : [iconName(id)]));
   }
 
   let warmed = false;
@@ -453,10 +456,10 @@ import { MersenneTwister, createLogic } from "./logic.js";
       new Image().src = `images/${t}.webp`;
     }
   }
-  // Each tab's images that first show on a press or, for the log scrollbars, once a log overflows. The pressed text
-  // button is among them, as the phone layout's Draw Civ tab has no text buttons.
-  const TAB_IMAGES = [[], ["ui/scrollbar_3slice", "ui/scrollbar_knob", "ui/button_pressed", "ui/button_pressed_9slice"],
-    ["ui/button_pressed", "ui/button_pressed_9slice"]];
+  // Each tab's images that first show on a press or, for the log scrollbars and the civ atlas, once a log overflows
+  // or has a row. The pressed text button is among them, as the phone layout's Draw Civ tab has no text buttons.
+  const TAB_IMAGES = [[], ["ui/scrollbar_3slice", "ui/scrollbar_knob", "ui/button_pressed", "ui/button_pressed_9slice",
+    "civ/civicon_atlas"], ["ui/button_pressed", "ui/button_pressed_9slice"]];
   function setTab(i) {
     if (i === ui.tab) return;
     ui.tab = i;
@@ -640,6 +643,14 @@ import { MersenneTwister, createLogic } from "./logic.js";
     const el = h("span", { className });
     setCell(el, i, cols);
     return el;
+  }
+  // The big civ icon and the swipe ghost show the civ's own icon file in place of an atlas: cell is a civ ID or
+  // RANDOM_CELL, as in the civ atlas.
+  function iconName(cell) {
+    return "civ/" + (cell === RANDOM_CELL ? "random" : CIVS[cell].file);
+  }
+  function setIcon(el, cell) {
+    el.style.setProperty("--atlas", `url("images/${iconName(cell)}.webp")`);
   }
   function setText(el, text) {
     if (el.textContent !== text) el.textContent = text;
@@ -892,7 +903,7 @@ import { MersenneTwister, createLogic } from "./logic.js";
 
     // Draw Civ tab
     $("civIcon").hidden = !settings.showIcon;
-    setCell(els.civIcon, cur ? cur.id : RANDOM_CELL, CIV_ATLAS_COLS);
+    setIcon(els.civIcon, cur ? cur.id : RANDOM_CELL);
     $("civIcon").setAttribute("aria-label", cur ? `${cur.name}: play the jingle` : "Random: play the jingle");
     setText(els.civName, ui.flash || (cur ? cur.name : "?"));
     els.civName.hidden = !settings.showName;
@@ -933,8 +944,8 @@ import { MersenneTwister, createLogic } from "./logic.js";
     for (const k of document.querySelectorAll("kbd[data-key]")) setText(k, keyLabel(k.dataset.key));
     if (tipTarget) setText(els.tip, tipTarget.dataset.tip || "");
 
-    // The next draw may have changed, so its jingle starts loading.
-    loadNextJingles();
+    // The next draw may have changed, so its jingle and icon start loading.
+    loadAhead();
   }
 
   // ---- Dialogs ----
@@ -1256,7 +1267,7 @@ import { MersenneTwister, createLogic } from "./logic.js";
       rest();
       const cell = swipeCell(kind);
       Object.assign(s, { kind, moves: cell !== null && !SIMPLE && settings.showIcon, travel: travel(kind) });
-      if (s.moves) setCell(ghost, cell, CIV_ATLAS_COLS);
+      if (s.moves) setIcon(ghost, cell);
     }
     // Places the icons for the swipe's progress s.t, from 0 to s.travel. Until the swipe acts, the civ icon shows the
     // current civ and the ghost the civ coming in. Acting puts the new civ on the civ icon, so the two swap places.
@@ -1338,7 +1349,7 @@ import { MersenneTwister, createLogic } from "./logic.js";
       SWIPE_ACTS[s.kind]();
       if (!s.moves) return;
       s.acted = true;
-      setCell(ghost, before, CIV_ATLAS_COLS);
+      setIcon(ghost, before);
       glideTo(s, s.travel);
     });
     document.addEventListener("pointercancel", (e) => {
@@ -1446,7 +1457,7 @@ import { MersenneTwister, createLogic } from "./logic.js";
     optForm.addEventListener("change", (e) => {
       const t = e.target;
       // The slider changes the civs the next draw can be once it's let go.
-      if (t.name === "freshN") return loadNextJingles();
+      if (t.name === "freshN") return loadAhead();
       if (t.name === "jingles") return setJingles(t.checked);
       if (t.name === "uiSounds") return setUiSounds(t.checked);
       if (t.name === "jingleType") {
@@ -1455,7 +1466,7 @@ import { MersenneTwister, createLogic } from "./logic.js";
         const c = currentCiv();
         if (!c || c.legacy) jingle(currentId());
         else sfx("view");
-        loadNextJingles();
+        loadAhead();
         return;
       }
       if (t.name === "hotkeys") {

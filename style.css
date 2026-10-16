@@ -177,6 +177,9 @@ body {
   width: calc(var(--cols) * 100%); height: calc(var(--rows) * 100%); background: var(--atlas) 0 0 / 100% 100% no-repeat;
 }
 .civ-cell { --atlas: url("images/civ/civicon_atlas.webp"); --cols: 8; --rows: 8; }
+/* The big civ icon and its swipe ghost draw one civ's own icon file, which the script sets as --atlas, so the Draw
+   Civ tab loads one icon rather than the atlas of small icons. */
+#civIcon, #civGhost { --cols: 1; --rows: 1; }
 .dlc-cell { --atlas: url("images/dlc/dlc_atlas.webp"); --cols: 6; --rows: 4; }
 #editionIcon { --atlas: url("images/dlc/edition_banners_atlas.webp"); --cols: 1; --rows: 3; }
 /* Parchment image buttons: each atlas has the button's looks side by side, normal first and pressed last, with the

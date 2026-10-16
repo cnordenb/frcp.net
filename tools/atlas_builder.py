@@ -3,7 +3,8 @@
 Run from the project folder after adding or changing icons:
     python tools/atlas_builder.py
 Needs Pillow (pip install pillow). Writes:
-    images/civ/civicon_atlas.webp          civ icons, cell index = civ id, "random" after the last civ
+    images/civ/civicon_atlas.webp          civ icons shrunk to 30 px for the Log and Civ Pool tabs, cell index = civ
+                                           id, "random" after the last civ (the Draw Civ tab shows the icon files)
     images/dlc/dlc_atlas.webp              edition icons (normal, hover, pressed), then DLC icons
     images/dlc/edition_banners_atlas.webp  edition banners stacked vertically, in data.json order
 
@@ -20,19 +21,23 @@ from pathlib import Path
 from PIL import Image
 
 ROOT = Path(__file__).resolve().parent.parent
-CIV_COLS, CIV_CELL = 8, 104
+CIV_COLS, CIV_CELL, CIV_ATLAS_CELL = 8, 104, 30
 DLC_COLS, DLC_CELL = 6, 128
 QUALITY = 90
 
 
-def build_grid(paths, cols, cell, out):
+# Lays out icons of cell px square in rows of cols, each shrunk to out_cell px if that's given
+def build_grid(paths, cols, cell, out, out_cell=None):
+    out_cell = out_cell or cell
     rows = math.ceil(len(paths) / cols)
-    atlas = Image.new("RGBA", (cols * cell, rows * cell))
+    atlas = Image.new("RGBA", (cols * out_cell, rows * out_cell))
     for i, p in enumerate(paths):
         img = Image.open(p).convert("RGBA")
         if img.size != (cell, cell):
             raise SystemExit(f"{p.name} is {img.size[0]}x{img.size[1]}, expected {cell}x{cell}")
-        atlas.paste(img, ((i % cols) * cell, (i // cols) * cell))
+        if out_cell != cell:
+            img = img.resize((out_cell, out_cell), Image.LANCZOS)
+        atlas.paste(img, ((i % cols) * out_cell, (i // cols) * out_cell))
     atlas.save(out, quality=QUALITY, method=6)
     print(f"{out.relative_to(ROOT)}: {len(paths)} icons, {cols} cols x {rows} rows, "
           f"{out.stat().st_size // 1024} KB  ->  CSS: --cols: {cols}; --rows: {rows};")
@@ -47,7 +52,7 @@ def main():
         raise SystemExit("civ ids in data.json must run 0..n-1 with no gaps")
     civ_paths = [ROOT / "images/civ" / f"{c['name'].lower()}.webp" for c in civs]
     civ_paths.append(ROOT / "images/civ/random.webp")
-    build_grid(civ_paths, CIV_COLS, CIV_CELL, ROOT / "images/civ/civicon_atlas.webp")
+    build_grid(civ_paths, CIV_COLS, CIV_CELL, ROOT / "images/civ/civicon_atlas.webp", CIV_ATLAS_CELL)
 
     dlc_dir = ROOT / "images/dlc"
     dlc_paths = []

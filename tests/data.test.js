@@ -70,7 +70,7 @@ test("the civ icon atlas has a cell for every civ and random", () => {
   const grid = cssGrid(".civ-cell");
   assert.equal(grid.cols, scriptConst("CIV_ATLAS_COLS"), "style.css and script.js disagree on the civ atlas's columns");
   assert.equal(grid.rows, Math.ceil((CIVS.length + 1) / grid.cols), "style.css has the wrong --rows for the civ atlas");
-  assert.deepEqual(webpSize("images/civ/civicon_atlas.webp"), { width: grid.cols * 104, height: grid.rows * 104 },
+  assert.deepEqual(webpSize("images/civ/civicon_atlas.webp"), { width: grid.cols * 30, height: grid.rows * 30 },
     "civicon_atlas.webp is out of date: run tools/atlas_builder.py");
 });
 
