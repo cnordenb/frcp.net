@@ -70,6 +70,7 @@
       <div class="menu">
         <button type="button" class="menu-title" aria-expanded="false" aria-controls="menu-help">Help</button>
         <div class="menu-list" id="menu-help" role="menu" hidden>
+          <button type="button" role="menuitem" class="simple" data-act="help"><span>Help ...</span><kbd></kbd></button>
           <button type="button" role="menuitem" data-act="hotkeys"><span>Hotkeys ...</span><kbd data-key="hotkeys"></kbd></button>
           <a role="menuitem" href="https://ko-fi.com/hjoerleif" target="_blank" rel="noopener"><span>Donate ...</span><kbd></kbd></a>
           <button type="button" role="menuitem" data-act="about"><span>About ...</span><kbd data-key="about"></kbd></button>
@@ -173,6 +174,7 @@
             <select name="hotkeys"><option value="desktop">Desktop</option><option value="browser">Browser-friendly</option></select></label>
           <button type="button" class="btn" data-act="hotkeys">Show Hotkeys</button>
         </div>
+        <label class="row simple"><input type="checkbox" name="charKeys">Single-key hotkeys</label>
         <p class="hint" id="modeHint"></p>
       </fieldset>
     </div>
@@ -196,11 +198,63 @@
       <p>Created by Carl Nordenbrink, alias <a href="https://www.youtube.com/hjoerleif" target="_blank" rel="noopener">Hjörleif</a>.
         Also available as a <a href="https://github.com/cnordenb/Fresh-Random-Civ-Picker_GUI/releases" target="_blank" rel="noopener">desktop app</a>.</p>
       <p>Custom civ pool, draw log and user settings are saved in this browser only. Share links carry a copy of the custom civ pool, and optionally of this round's draws.</p>
+      <p class="simple">In short: Age of Empires II belongs to Microsoft. This picker is a fan project. Microsoft didn't make it and doesn't support it.</p>
       <p class="hint">Age of Empires II © Microsoft Corporation. Fresh Random Civ Picker was created under Microsoft's
         "<a href="https://www.xbox.com/en-US/developers/rules" target="_blank" rel="noopener">Game Content Usage Rules</a>"
         using assets from Age of Empires II and Age of Empires II: Definitive Edition, and it is not endorsed by or affiliated with Microsoft.</p>
     </div>
     <div class="dlg-buttons"><button type="submit" class="btn" autofocus>OK</button></div>
+  </form>
+</dialog>
+
+<!-- Simple mode's help: how the picker works in plain words, and what its words and short forms mean -->
+<dialog class="win simple" id="dlgHelp" aria-labelledby="helpTitle">
+  <form data-closes>
+    <div class="dlg-title"><h2 id="helpTitle" tabindex="-1" autofocus>Help</h2><button type="button" class="dlg-x" data-close aria-label="Close">✕</button></div>
+    <div class="dlg-body help">
+      <h3>How it works</h3>
+      <p>This page picks a civilisation, or civ, for you to play in Age of Empires II.</p>
+      <p>Press Draw to get a civ. Each civ in your civ pool comes up once before any civ comes up again. The draws until then are called a round.</p>
+      <p>Press Reset to start a new round. Undo, in the Civs menu, takes back your last change. Redo puts it back.</p>
+      <p>The Log tab lists the civs you have drawn, newest first. It also lists the civs that are left in this round.</p>
+      <p>On the Civ Pool tab, pick the edition of the game you play. Then tick the civs you want. Only ticked civs can be drawn.</p>
+      <p>Your civ pool, your log and your options are saved in this browser. A share link gives the same civ pool to someone else.</p>
+      <h3>Words</h3>
+      <dl class="terms">
+        <dt>Civ</dt><dd>A civilisation, such as the Britons. Each civ plays a bit differently.</dd>
+        <dt>Civ pool</dt><dd>The civs that can be drawn.</dd>
+        <dt>Draw</dt><dd>Pick a random civ from the civ pool.</dd>
+        <dt>Round</dt><dd>The draws from one reset to the next. No civ comes up twice in a round.</dd>
+        <dt>Reset</dt><dd>End the round and start a new one.</dd>
+        <dt>Undo and redo</dt><dd>Undo takes back your last change. Redo puts it back.</dd>
+        <dt>Log</dt><dd>The list of civs you have drawn.</dd>
+        <dt>Edition</dt><dd>A version of the game. Each edition has its own civs.</dd>
+        <dt>Expansion</dt><dd>Extra content for the game, with new civs. Its box turns all of its civs on or off.</dd>
+        <dt>Auto-toggle older civs</dt><dd>Turns on the civs of the first game and its early expansions when you pick an edition.</dd>
+        <dt>Auto-reset upon change</dt><dd>Starts a new round each time you change the civ pool.</dd>
+        <dt>Continuous freshness</dt><dd>When a new round starts, the last civs you drew can't come up again right away.</dd>
+        <dt>Share link</dt><dd>A web address with your civ pool in it. It can also hold this round's draws.</dd>
+        <dt>Preset</dt><dd>A file with your civ pool and draws. The desktop app can open it too.</dd>
+        <dt>Quicksave and quickload</dt><dd>Quicksave keeps a copy of the picker in this browser. Quickload brings that copy back.</dd>
+        <dt>Tech tree</dt><dd>A web page that shows what a civ can build and research.</dd>
+        <dt>Lobby</dt><dd>A game in Age of Empires II: Definitive Edition that is waiting for players. To spectate is to watch it without playing.</dd>
+        <dt>Hotkey</dt><dd>A key that does something on this page. For example, Space draws a civ.</dd>
+        <dt>Single-key hotkey</dt><dd>A hotkey that is just one key, such as a letter, without Ctrl.</dd>
+      </dl>
+      <h3>Short forms</h3>
+      <dl class="terms">
+        <dt>FRCP</dt><dd>Fresh Random Civ Picker</dd>
+        <dt>AoE2</dt><dd>Age of Empires II</dd>
+        <dt>AoE2DE, DE</dt><dd>Age of Empires II: Definitive Edition</dd>
+        <dt>HD</dt><dd>Age of Empires II: HD Edition</dd>
+        <dt>AoK</dt><dd>Age of Empires II: The Age of Kings</dd>
+        <dt>DLC</dt><dd>Downloadable content: an expansion for the game</dd>
+        <dt>Ctrl</dt><dd>The Control key</dd>
+        <dt>Esc</dt><dd>The Escape key</dd>
+        <dt>F1 to F12</dt><dd>The function keys, at the top of the keyboard</dd>
+      </dl>
+    </div>
+    <div class="dlg-buttons"><button type="submit" class="btn">OK</button></div>
   </form>
 </dialog>
 
@@ -231,6 +285,7 @@
       <div class="share-row"><label for="shareRound">Share pool + draws</label><input type="text" id="shareRound" readonly>
         <button type="button" class="btn" data-copy="shareRound">Copy</button></div>
       <p class="hint" id="shareNote"></p>
+      <p class="simple" id="shareStatus" role="status"></p>
     </div>
     <div class="dlg-buttons"><button type="submit" class="btn" autofocus>Close</button></div>
   </form>
@@ -242,6 +297,7 @@
     <div class="dlg-body">
       <div class="field"><label for="openInput">Paste a Fresh Random Civ Picker link:</label>
         <input type="text" id="openInput" autocomplete="off" spellcheck="false" autofocus></div>
+      <p class="hint simple" id="openHint"></p>
       <p class="err" id="openErr" hidden>That isn't a Fresh Random Civ Picker link.</p>
     </div>
     <div class="dlg-buttons">

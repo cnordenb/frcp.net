@@ -71,7 +71,18 @@ import { MersenneTwister, createLogic } from "./logic.js";
     enableAll: "Enable all civs", disableAll: "Disable all civs",
     ...Object.fromEntries(EDITIONS.map((ed) => ["ed" + ed, EDITION_INFO[ed].short])),
     autoToggle: "Auto-toggle older civs", autoReset: "Auto-reset on change",
+    ...(SIMPLE ? { techtree: "Open Tech Tree in a new tab", undo: "Undo the last change", redo: "Redo the last undone change" } : {}),
   };
+
+  // Simple mode always uses the browser-friendly hotkeys, as the desktop ones take Tab, Space and Enter from the
+  // focused control. It has no sound, so no sound toggles, and its single-key hotkeys (letters, digits, ? and Space
+  // without Ctrl) can be turned off, for speech input and for keys pressed by accident. Nor has it a civ icon to toggle.
+  const hotkeyMode = () => (SIMPLE ? "browser" : settings.hotkeys);
+  const SIMPLE_DROPPED = new Set(["quizJingles", "quizUi", "quizIcon"]);
+  const isCharKey = (name) => /^(Shift\+)?([A-Z0-9?]|Space)$/.test(name);
+  const activeKeys = (pairs) => (SIMPLE
+    ? pairs.filter(([key, act]) => !SIMPLE_DROPPED.has(act) && (settings.charKeys || !isCharKey(key)))
+    : pairs);
 
   // ---- Settings and saved state ----
 
@@ -85,7 +96,7 @@ import { MersenneTwister, createLogic } from "./logic.js";
     drawOnLoad: false, newRoundOnVisit: false,
     fresh: true, freshN: FRESH_MOST,
     showRemaining: true, autoReset: false, autoToggle: false,
-    hotkeys: "browser",
+    hotkeys: "browser", charKeys: true,
   };
 
   function storageGet(key) {
@@ -145,6 +156,7 @@ import { MersenneTwister, createLogic } from "./logic.js";
 
   function commit() {
     ui.flash = null;
+    if (SIMPLE) clearStatus();
     saveState();
     render();
   }
@@ -316,25 +328,42 @@ import { MersenneTwister, createLogic } from "./logic.js";
     else sfx("button");
   }
 
-  // Undo and redo cover draws and resets for this visit, but not re-rolls. Changing the pool clears them.
-  const snapshot = () => JSON.stringify(state.log);
-  function recordUndo() {
-    undoStacks.undo.push(snapshot());
+  // Undo and redo cover draws and resets for this visit, but not re-rolls. Changing the pool clears them, and so do
+  // clearing the log and loading a quicksave, preset or link. Simple mode keeps an undo step for those instead, so
+  // that every change can be taken back. A step holds the pool as well as the log, for simple mode's pool changes.
+  const snapshot = () => JSON.stringify({ edition: state.edition, off: [...state.off], log: state.log });
+  function restore(snap) {
+    const s = JSON.parse(snap);
+    state.edition = s.edition;
+    state.off = new Set(s.off);
+    state.log = s.log;
+  }
+  function pushUndo(snap) {
+    undoStacks.undo.push(snap);
     if (undoStacks.undo.length > UNDO_CAP) undoStacks.undo.shift();
     undoStacks.redo.length = 0;
   }
+  const recordUndo = () => pushUndo(snapshot());
   function clearHistory() {
     undoStacks.undo.length = 0;
     undoStacks.redo.length = 0;
   }
+  // Before the log or the whole state is replaced
+  function beforeReplace() {
+    if (SIMPLE) recordUndo();
+    else clearHistory();
+  }
   function step(from, to) {
+    const undoing = from === undoStacks.undo;
     if (!from.length) {
       sfx("error");
+      if (SIMPLE) toast(undoing ? "Nothing to undo" : "Nothing to redo");
       return;
     }
     to.push(snapshot());
-    state.log = JSON.parse(from.pop());
+    restore(from.pop());
     commit();
+    if (SIMPLE) toast(undoing ? "Undone" : "Redone");
     if (settings.jingles) jingle(currentId());
     else sfx("button");
   }
@@ -343,9 +372,14 @@ import { MersenneTwister, createLogic } from "./logic.js";
 
   function clearLog() {
     sfx("button");
+    if (SIMPLE && state.log.length < 2) {
+      toast("There are no past rounds to clear");
+      return;
+    }
+    beforeReplace();
     state.log = [round()];
-    clearHistory();
     commit();
+    if (SIMPLE) toast("Log cleared. Undo brings it back.");
   }
 
   // ---- Civ pool ----
@@ -353,13 +387,15 @@ import { MersenneTwister, createLogic } from "./logic.js";
   const poolKey = () => state.edition + "|" + [...state.off].sort((a, b) => a - b).join(",");
   function changePool(mutate) {
     const before = poolKey();
+    const snap = snapshot();
     mutate();
     applyEdition(state);
     if (poolKey() === before) {
       render();
       return;
     }
-    clearHistory();
+    if (SIMPLE) pushUndo(snap);
+    else clearHistory();
     if (settings.autoReset) closeRound();
     commit();
   }
@@ -466,6 +502,9 @@ import { MersenneTwister, createLogic } from "./logic.js";
     sfx("tab");
     preload(...TAB_IMAGES[i]);
     render();
+    // A hotkey can switch tabs from a control that the new tab hides: in simple mode, focus goes to the new tab.
+    const focused = document.activeElement;
+    if (SIMPLE && focused && focused !== document.body && !focused.checkVisibility()) els.tabs[i].focus();
   }
 
   // ---- Share links ----
@@ -475,8 +514,8 @@ import { MersenneTwister, createLogic } from "./logic.js";
   const { parseShare } = logic;
 
   function applyLink(link) {
+    beforeReplace();
     logic.applyLink(state, link);
-    clearHistory();
     commit();
   }
 
@@ -542,8 +581,8 @@ import { MersenneTwister, createLogic } from "./logic.js";
       toast("Nothing quicksaved yet");
       return;
     }
+    beforeReplace();
     state = saved;
-    clearHistory();
     commit();
     if (settings.jingles) jingle(currentId());
     else sfx("button");
@@ -582,8 +621,8 @@ import { MersenneTwister, createLogic } from "./logic.js";
       msgBox("Preset not recognised", `${file.name} isn't a Fresh Random Civ Picker preset, so nothing has changed.`);
       return;
     }
+    beforeReplace();
     logic.applyPreset(state, preset);
-    clearHistory();
     commit();
     if (settings.jingles) jingle(currentId());
     else sfx("button");
@@ -681,6 +720,7 @@ import { MersenneTwister, createLogic } from "./logic.js";
   const dlcBoxes = {};
   function dlcTip(dlc, slot) {
     const names = CIVS.filter((c) => c.dlc === dlc).map((c) => c.name);
+    if (SIMPLE) return `Turns the civs of ${DLCS[dlc].name} on or off: ${names.join(", ")}\nHotkey: ${DLC_KEYS[slot]}`;
     return `Toggles ${DLCS[dlc].name} civilisation${names.length === 1 ? "" : "s"}\n(${names.join(", ")})\nHotkey: ${DLC_KEYS[slot]}`;
   }
   // The atlas cell that stands in for a civ or DLC checkbox, with the off cross that shows while it's unchecked
@@ -698,17 +738,18 @@ import { MersenneTwister, createLogic } from "./logic.js";
         type: "button", className: "imgbtn edition", id: "ed" + ed, "aria-pressed": "false",
         dataset: { pick: ed, tip: `Selects the ${info.short} (${info.year}) civilisation pool\nHotkey: ${EDITION_KEYS[i]}` },
       }, atlasCell("ed-icon sprite dlc-cell", 3 * i, DLC_ATLAS_COLS), `${info.short} (${info.year})`);
-      Object.assign(button.style, { left: "10px", top: 36 + 30 * i + "px" });
+      if (!SIMPLE) Object.assign(button.style, { left: "10px", top: 36 + 30 * i + "px" });
       $("editionGroup").append(button);
       els.editionButtons.push(button);
     });
-    // Each civ keeps its place in the grid in every edition, as on the desktop app.
+    // Each civ keeps its place in the grid in every edition, as on the desktop app. Simple mode's CSS lays the
+    // controls out by itself.
     DISPLAY_ORDER.forEach((c, i) => {
       const input = h("input", { type: "checkbox" });
       input.addEventListener("change", () => toggleCiv(c.id));
       const label = h("label", { className: "chk icon-chk civ" },
         input, chkIcon("civ-cell", c.id, CIV_ATLAS_COLS, 18), h("span", { className: "chk-name" }, c.name));
-      Object.assign(label.style, { left: GRID_COLS[i % 5] + "px", top: 210 + 20 * Math.floor(i / 5) + "px" });
+      if (!SIMPLE) Object.assign(label.style, { left: GRID_COLS[i % 5] + "px", top: 210 + 20 * Math.floor(i / 5) + "px" });
       $("civGrid").append(label);
       civBoxes[c.id] = { label, input };
     });
@@ -720,11 +761,23 @@ import { MersenneTwister, createLogic } from "./logic.js";
         input.addEventListener("change", () => toggleDlc(dlc));
         const label = h("label", { className: "chk icon-chk", dataset: { tip: dlcTip(dlc, i), dlc } },
           input, chkIcon("dlc-cell", dlcCell(dlc), DLC_ATLAS_COLS, L.size), h("span", { className: "chk-name" }, DLCS[dlc].name));
-        Object.assign(label.style, { left: L.left + "px", top: L.top + L.step * i + "px", height: L.size + "px", gap: L.gap + "px" });
+        if (!SIMPLE) Object.assign(label.style, { left: L.left + "px", top: L.top + L.step * i + "px", height: L.size + "px", gap: L.gap + "px" });
         group.append(label);
         dlcBoxes[dlc] = input;
       });
-      els.panel.append(group);
+      // Simple mode puts the expansions before the civs, where they show, so that they're read and reached in that
+      // order too.
+      if (SIMPLE) {
+        group.setAttribute("role", "group");
+        group.setAttribute("aria-label", "Expansions");
+        $("civGrid").before(group);
+      } else {
+        els.panel.append(group);
+      }
+    }
+    if (SIMPLE) {
+      $("civGrid").setAttribute("role", "group");
+      $("civGrid").setAttribute("aria-label", "Civs");
     }
   }
 
@@ -738,11 +791,28 @@ import { MersenneTwister, createLogic } from "./logic.js";
     enableAllBtn: "Enables all civilisations so that they are made available in the pool of civilisations for drawing\nHotkey: Space",
     disableAllBtn: "Disables all civilisations so that they are removed from the pool of civilisations for drawing\nHotkey: Enter",
     poolShareBtn: "Copies a share link with this civ pool",
+    // Simple mode's tooltips, in plainer words
+    ...(SIMPLE ? {
+      drawBtn: "Draws a civ that hasn't come up yet this round\nHotkey: Space",
+      resetBtn: "Ends this round and starts a new one\nHotkey: Enter",
+      clearLogBtn: "Clears the past rounds from the log. This round stays.\nHotkey: Q",
+      showRemainingLabel: "Shows or hides the list of civs left this round\nHotkey: W",
+      autoToggleLabel: "Turns the older civs on or off. While it's on, picking an edition turns its older civs on.\nHotkey: R",
+      autoResetLabel: "Starts a new round each time you change the civ pool\nHotkey: T",
+      enableAllBtn: "Turns on every civ, so that all of them can be drawn\nHotkey: Space",
+      disableAllBtn: "Turns off every civ\nHotkey: Enter",
+      poolShareBtn: "Copies a link with this civ pool",
+    } : {}),
   };
 
   function keyLabel(action) {
-    const pair = GLOBAL_KEYS[settings.hotkeys].find(([, a]) => a === action);
+    const pair = activeKeys(GLOBAL_KEYS[hotkeyMode()]).find(([, a]) => a === action);
     return pair ? pair[0] : "";
+  }
+  // A tooltip's text. Simple mode leaves out the hotkey line while single-key hotkeys are off.
+  function tipText(el) {
+    const text = el.dataset.tip || "";
+    return SIMPLE && !settings.charKeys ? text.replace(/\nHotkey:.*$/s, "") : text;
   }
 
   // ---- Render ----
@@ -756,14 +826,15 @@ import { MersenneTwister, createLogic } from "./logic.js";
     }
     return rounds;
   }
-  // Fills a log with rounds of [civ id, text] rows, each led by the civ's icon, unless it shows those rows already
+  // Fills a log with rounds of [civ id, text] rows, each led by the civ's icon, unless it shows those rows already.
+  // In simple mode each round is a list, so screen readers can tell the rounds apart.
   const logKeys = new Map();
   function fillLog(log, rounds) {
     const key = JSON.stringify(rounds);
     if (logKeys.get(log) === key) return;
     logKeys.set(log, key);
-    log.replaceChildren(...rounds.map((rows) => h("div", { className: "log-round" }, ...rows.map(([id, text]) =>
-      h("div", { className: "log-row" }, SIMPLE ? "" : atlasCell("log-icon sprite civ-cell", id, CIV_ATLAS_COLS), text)))));
+    log.replaceChildren(...rounds.map((rows) => h(SIMPLE ? "ul" : "div", { className: "log-round" }, ...rows.map(([id, text]) =>
+      h(SIMPLE ? "li" : "div", { className: "log-row" }, SIMPLE ? "" : atlasCell("log-icon sprite civ-cell", id, CIV_ATLAS_COLS), text)))));
   }
 
   // ---- Log scrollbars ----
@@ -905,9 +976,16 @@ import { MersenneTwister, createLogic } from "./logic.js";
     $("civIcon").hidden = !settings.showIcon;
     setIcon(els.civIcon, cur ? cur.id : RANDOM_CELL);
     $("civIcon").setAttribute("aria-label", cur ? `${cur.name}: play the jingle` : "Random: play the jingle");
-    setText(els.civName, ui.flash || (cur ? cur.name : "?"));
+    // With no civ drawn, simple mode's screen reader text says so in place of the question mark.
+    if (SIMPLE && !ui.flash && !cur) {
+      if (!els.civName.querySelector(".sr-only")) {
+        els.civName.replaceChildren(h("span", { "aria-hidden": "true" }, "?"), h("span", { className: "sr-only" }, "No civ drawn yet"));
+      }
+    } else {
+      setText(els.civName, ui.flash || (cur ? cur.name : "?"));
+    }
     els.civName.hidden = !settings.showName;
-    setText(els.counter, `${drawn}/${n}`);
+    setText(els.counter, SIMPLE ? `Drawn: ${drawn}/${n}` : `${drawn}/${n}`);
     els.counter.hidden = !settings.showCounter;
 
     // Log tab
@@ -940,9 +1018,12 @@ import { MersenneTwister, createLogic } from "./logic.js";
     const optionsKey = keyLabel("options");
     $("optionsBig").dataset.tip = `Opens options\nHotkey: Q / ${optionsKey}`;
     $("techBtn").dataset.tip = `Opens the tech tree${cur ? " for the " + cur.name : ""}\nHotkey: T (Draw tab only) / ${keyLabel("techtree")}`;
-    $("shareBtn").dataset.tip = `Copies a share link with the currently selected civ pool and this round's draws\nHotkey: ${keyLabel("copyLink")}`;
+    $("shareBtn").dataset.tip = SIMPLE
+      ? `Copies a link with this civ pool and this round's draws\nHotkey: ${keyLabel("copyLink")}`
+      : `Copies a share link with the currently selected civ pool and this round's draws\nHotkey: ${keyLabel("copyLink")}`;
     for (const k of document.querySelectorAll("kbd[data-key]")) setText(k, keyLabel(k.dataset.key));
-    if (tipTarget) setText(els.tip, tipTarget.dataset.tip || "");
+    if (tipTarget) setText(els.tip, tipText(tipTarget));
+    if (SIMPLE) describeTips();
 
     // The next draw may have changed, so its jingle and icon start loading.
     loadAhead();
@@ -971,15 +1052,17 @@ import { MersenneTwister, createLogic } from "./logic.js";
   const optForm = $("optForm");
   function syncOptions() {
     const f = optForm.elements;
-    for (const k of ["showName", "showIcon", "showCounter", "tooltips", "jingles", "uiSounds", "drawOnLoad", "newRoundOnVisit", "fresh"]) {
+    for (const k of ["showName", "showIcon", "showCounter", "tooltips", "jingles", "uiSounds", "drawOnLoad", "newRoundOnVisit", "fresh", "charKeys"]) {
       f[k].checked = settings[k];
     }
     f.jingleType.value = settings.legacyJingles ? "legacy" : "de";
     f.jingleType.disabled = !settings.jingles;
     f.hotkeys.value = settings.hotkeys;
-    $("modeHint").textContent = settings.hotkeys === "desktop"
-      ? "The desktop app's keys. Tab, F1, F3, F5, Ctrl+S, Ctrl+R and Ctrl+F do picker things instead of browser things."
-      : "Leaves reload, find, save page, help and Tab to the browser.";
+    $("modeHint").textContent = SIMPLE
+      ? "Single-key hotkeys are letters, numbers, ? and Space on their own. Turn them off if you use speech input, or if you press keys by mistake. Keys with Ctrl, and F1 to F12, still work."
+      : settings.hotkeys === "desktop"
+        ? "The desktop app's keys. Tab, F1, F3, F5, Ctrl+S, Ctrl+R and Ctrl+F do picker things instead of browser things."
+        : "Leaves reload, find, save page, help and Tab to the browser.";
     const n = poolIds().length;
     const slider = f.freshN;
     slider.max = String(freshMax(n));
@@ -1009,7 +1092,7 @@ import { MersenneTwister, createLogic } from "./logic.js";
   function buildHotkeys() {
     const rows = (pairs) => {
       const byAction = new Map();
-      for (const [key, act] of pairs) byAction.set(act, [...(byAction.get(act) || []), key]);
+      for (const [key, act] of activeKeys(pairs)) byAction.set(act, [...(byAction.get(act) || []), key]);
       return [...byAction].map(([act, keys]) => [keys, act.startsWith("dlc") ? dlcSlotText(Number(act.slice(3))) : ACTION_TEXT[act]]);
     };
     const section = (title, list, className = "") => h("section", { className },
@@ -1017,13 +1100,17 @@ import { MersenneTwister, createLogic } from "./logic.js";
       h("ul", {}, ...list.map(([keys, text]) => h("li", {},
         ...keys.flatMap((k, i) => [i ? " / " : "", h("kbd", { className: "key" }, k)]), " " + text))));
     $("hkGrid").replaceChildren(
-      section("Global", [...rows(GLOBAL_KEYS[settings.hotkeys]), [["Esc"], "Close a dialog or menu"]], "global"),
+      section("Global", [...rows(GLOBAL_KEYS[hotkeyMode()]), [["Esc"], "Close a dialog or menu"]], "global"),
       h("div", {}, section("Draw Civ tab", rows(TAB_KEYS[0])), section("Log tab", rows(TAB_KEYS[1]))),
       section("Civ Pool tab", rows(TAB_KEYS[2])),
     );
-    $("hkMode").textContent = settings.hotkeys === "desktop"
-      ? "Desktop hotkeys. Options can switch to browser-friendly hotkeys, which leave the browser's own keys alone."
-      : "Browser-friendly hotkeys. Options can switch to the desktop app's hotkeys.";
+    $("hkMode").textContent = SIMPLE
+      ? settings.charKeys
+        ? "Single-key hotkeys are on. You can turn them off in Options."
+        : "Single-key hotkeys are off, so only these keys work. You can turn them back on in Options."
+      : settings.hotkeys === "desktop"
+        ? "Desktop hotkeys. Options can switch to browser-friendly hotkeys, which leave the browser's own keys alone."
+        : "Browser-friendly hotkeys. Options can switch to the desktop app's hotkeys.";
   }
   const dlcSlotText = (i) => "Toggle " + EDITIONS.map((ed) => EDITION_INFO[ed].dlcToggles[i]).filter(Boolean).map((d) => DLCS[d].short).join(" / ");
   function openHotkeys() {
@@ -1035,15 +1122,36 @@ import { MersenneTwister, createLogic } from "./logic.js";
     sfx("button");
     showDialog($("dlgAbout"));
   }
+  function openHelp() {
+    sfx("button");
+    showDialog($("dlgHelp"));
+  }
+  // A field's error message shows under it. In simple mode the field is also marked invalid, described by the
+  // message and focused, so a screen reader reads the message out.
+  function showFieldError(input, err) {
+    err.hidden = false;
+    if (!SIMPLE) return;
+    input.setAttribute("aria-invalid", "true");
+    input.setAttribute("aria-describedby", [err.id, input.dataset.hint].filter(Boolean).join(" "));
+    input.focus();
+  }
+  function clearFieldError(input, err) {
+    err.hidden = true;
+    if (!SIMPLE) return;
+    input.removeAttribute("aria-invalid");
+    if (input.dataset.hint) input.setAttribute("aria-describedby", input.dataset.hint);
+    else input.removeAttribute("aria-describedby");
+  }
   function openLobby() {
     sfx("button");
     $("lobbyCode").value = "";
-    $("lobbyErr").hidden = true;
+    clearFieldError($("lobbyCode"), $("lobbyErr"));
     showDialog($("dlgLobby"));
   }
   function openShare() {
     $("sharePool").value = shareUrl(false);
     $("shareRound").value = shareUrl(true);
+    $("shareStatus").textContent = "";
     const n = drawnIds().filter(isOn).length;
     $("shareNote").textContent = n
       ? `The second link also carries the ${n} civ${n === 1 ? "" : "s"} drawn this round, in order.`
@@ -1054,7 +1162,7 @@ import { MersenneTwister, createLogic } from "./logic.js";
   function openLinkDialog() {
     sfx("button");
     $("openInput").value = "";
-    $("openErr").hidden = true;
+    clearFieldError($("openInput"), $("openErr"));
     showDialog($("dlgOpen"));
   }
   let pendingLink = null;
@@ -1085,21 +1193,76 @@ import { MersenneTwister, createLogic } from "./logic.js";
   }
   function closeMenus() {
     if (!openMenuEl) return;
+    const title = openMenuEl.querySelector(".menu-title");
+    // In simple mode, focus in the menu goes back to its title, rather than to nowhere as the menu hides. A dialog that
+    // a menu item opens then gives focus back to the title too.
+    if (SIMPLE && openMenuEl.contains(document.activeElement)) title.focus();
     openMenuEl.classList.remove("open");
     openMenuEl.querySelector(".menu-list").hidden = true;
-    openMenuEl.querySelector(".menu-title").setAttribute("aria-expanded", "false");
+    title.setAttribute("aria-expanded", "false");
     openMenuEl = null;
+  }
+
+  // Simple mode's menus work from the keyboard as menu buttons do. On a title, Enter, Space or Down opens the menu at
+  // its first item, and Up at its last. In the menu, Up, Down, Home and End move through the items, Left and Right
+  // open the next menu along, Esc closes it, and Tab closes it and moves on.
+  function bindMenuKeys() {
+    const menus = [...document.querySelectorAll("#menubar .menu")];
+    const items = (menu) => [...menu.querySelectorAll(".menu-list > :is(button, a)")].filter((el) => el.checkVisibility());
+    const openAt = (menu, last) => {
+      openMenu(menu);
+      const list = items(menu);
+      if (list.length) list[last ? list.length - 1 : 0].focus();
+    };
+    for (const menu of menus) {
+      const title = menu.querySelector(".menu-title");
+      title.setAttribute("aria-haspopup", "menu");
+      title.addEventListener("keydown", (e) => {
+        if (!["Enter", " ", "ArrowDown", "ArrowUp"].includes(e.key) || e.altKey || e.ctrlKey || e.metaKey) return;
+        e.preventDefault();
+        e.stopPropagation();
+        openAt(menu, e.key === "ArrowUp");
+      });
+      // Space clicks a button when it's let go, which would close the menu again.
+      title.addEventListener("keyup", (e) => { if (e.key === " ") e.preventDefault(); });
+      menu.querySelector(".menu-list").addEventListener("keydown", (e) => {
+        if (e.altKey || e.ctrlKey || e.metaKey) return;
+        const list = items(menu);
+        const i = list.indexOf(document.activeElement);
+        const move = { ArrowDown: (i + 1) % list.length, ArrowUp: (i - 1 + list.length) % list.length, Home: 0, End: list.length - 1 }[e.key];
+        if (e.key === "Tab") {
+          closeMenus();
+          return;
+        }
+        if (move === undefined && !["Escape", "ArrowLeft", "ArrowRight"].includes(e.key)) return;
+        e.preventDefault();
+        e.stopPropagation();
+        if (move !== undefined) list[move].focus();
+        else if (e.key === "Escape") closeMenus();
+        else openAt(menus[(menus.indexOf(menu) + (e.key === "ArrowRight" ? 1 : menus.length - 1)) % menus.length]);
+      });
+      menu.addEventListener("focusout", (e) => {
+        if (openMenuEl === menu && !menu.contains(e.relatedTarget)) closeMenus();
+      });
+    }
   }
 
   // ---- Tooltips and toasts ----
 
   let tipTarget = null;
+  // Simple mode: whether the tooltip showing came from the mouse or from keyboard focus, and the control whose
+  // tooltip Esc or a key press hid, which stays hidden until the mouse leaves that control
+  let tipBy = null;
+  let tipDismissed = null;
   function hideTip() {
     els.tip.hidden = true;
     tipTarget = null;
+    tipBy = null;
   }
+  const tipsAllowed = () => settings.tooltips && !openMenuEl && !anyDialogOpen();
   // Tooltips follow the mouse, so a touch shows none.
   function moveTip(e) {
+    if (SIMPLE) return moveTipSimple(e);
     const target = settings.tooltips && e.pointerType === "mouse" && !openMenuEl && !anyDialogOpen() && e.target instanceof Element
       ? e.target.closest("[data-tip]") : null;
     if (!target) {
@@ -1120,13 +1283,80 @@ import { MersenneTwister, createLogic } from "./logic.js";
     els.tip.style.top = y + "px";
   }
 
+  // Simple mode's tooltips sit against their control, just below it or else just above, so the mouse can move onto
+  // one without it going away. One shows while the mouse is over its control or itself, or while its control has
+  // keyboard focus.
+  function showTip(target, by) {
+    tipTarget = target;
+    tipBy = by;
+    setText(els.tip, tipText(target));
+    els.tip.hidden = false;
+    const r = target.getBoundingClientRect();
+    const w = els.tip.offsetWidth;
+    const ht = els.tip.offsetHeight;
+    els.tip.style.left = Math.max(4, Math.min(r.left, innerWidth - w - 4)) + "px";
+    els.tip.style.top = (r.bottom + ht <= innerHeight - 4 ? r.bottom : Math.max(4, r.top - ht)) + "px";
+  }
+  function moveTipSimple(e) {
+    if (e.pointerType !== "mouse" || !(e.target instanceof Element) || els.tip.contains(e.target)) return;
+    const target = tipsAllowed() ? e.target.closest("[data-tip]") : null;
+    if (target !== tipDismissed) tipDismissed = null;
+    if (target && target !== tipDismissed) {
+      if (target !== tipTarget) showTip(target, "mouse");
+    } else if (tipBy === "mouse") {
+      hideTip();
+    }
+  }
+  function bindSimpleTips() {
+    document.addEventListener("focusin", (e) => {
+      const target = e.target instanceof Element && e.target.matches(":focus-visible") && tipsAllowed() ? e.target.closest("[data-tip]") : null;
+      if (target) showTip(target, "focus");
+      else if (tipBy === "focus") hideTip();
+    });
+    document.addEventListener("focusout", () => { if (tipBy === "focus") hideTip(); });
+    // Esc hides any tooltip, and any other key a mouse one, so that none covers what the keyboard moves to.
+    document.addEventListener("keydown", (e) => {
+      if (tipTarget && (e.key === "Escape" || tipBy === "mouse")) {
+        tipDismissed = tipTarget;
+        hideTip();
+      }
+    }, true);
+  }
+  // Each control with a tooltip also has its text as a description, for screen readers.
+  const tipDescs = new Map();
+  function describeTips() {
+    for (const el of document.querySelectorAll("[data-tip]")) {
+      const control = el.matches("label") ? el.querySelector("input") : el;
+      if (!control) continue;
+      let desc = tipDescs.get(el);
+      if (!desc) {
+        desc = h("span", { id: "tip-desc-" + tipDescs.size, hidden: true });
+        document.body.append(desc);
+        tipDescs.set(el, desc);
+        control.setAttribute("aria-describedby", desc.id);
+      }
+      setText(desc, tipText(el).replace(/\n/g, ". "));
+    }
+  }
+
   let toastTimer = 0;
   function toast(text) {
     const t = $("toast");
+    if (SIMPLE) {
+      // Simple mode's status bar keeps the message until the next change or message. It's emptied first, so that a
+      // screen reader announces a message that repeats.
+      clearStatus();
+      toastTimer = setTimeout(() => { t.textContent = text; }, 50);
+      return;
+    }
     t.textContent = text;
     t.classList.add("show");
     clearTimeout(toastTimer);
     toastTimer = setTimeout(() => t.classList.remove("show"), 2200);
+  }
+  function clearStatus() {
+    clearTimeout(toastTimer);
+    $("toast").textContent = "";
   }
 
   // ---- Actions (hotkeys, menus and buttons) ----
@@ -1134,7 +1364,7 @@ import { MersenneTwister, createLogic } from "./logic.js";
   const ACTIONS = {
     cycleTab: () => setTab((ui.tab + 1) % 3),
     tab0: () => setTab(0), tab1: () => setTab(1), tab2: () => setTab(2),
-    options: openOptions, hotkeys: openHotkeys, about: openAbout, techtree: openTechTree,
+    options: openOptions, hotkeys: openHotkeys, about: openAbout, help: openHelp, techtree: openTechTree,
     quicksave, quickload, savePreset, loadPreset,
     copyLink: copyShareLink, share: openShare, openLink: openLinkDialog, lobby: openLobby,
     undo, redo,
@@ -1173,6 +1403,8 @@ import { MersenneTwister, createLogic } from "./logic.js";
   function onKeyDown(e) {
     if (anyDialogOpen()) return;
     if (openMenuEl) {
+      // Keys in an open menu are the menu's, in simple mode.
+      if (SIMPLE && openMenuEl.contains(e.target)) return;
       closeMenus();
       if (e.key === "Escape") {
         e.preventDefault();
@@ -1186,8 +1418,8 @@ import { MersenneTwister, createLogic } from "./logic.js";
     if (e.altKey || e.metaKey || isTyping(e.target)) return;
     const name = keyName(e);
     if (!name) return;
-    const mode = settings.hotkeys;
-    const pair = TAB_KEYS[ui.tab].find(([k]) => k === name) || GLOBAL_KEYS[mode].find(([k]) => k === name);
+    const mode = hotkeyMode();
+    const pair = activeKeys(TAB_KEYS[ui.tab]).find(([k]) => k === name) || activeKeys(GLOBAL_KEYS[mode]).find(([k]) => k === name);
     if (!pair) return;
     // In browser-friendly mode, Space and Enter on a focused control do what the control does.
     if (mode === "browser" && (name === "Space" || name === "Enter") && isControl(e.target)) return;
@@ -1375,10 +1607,11 @@ import { MersenneTwister, createLogic } from "./logic.js";
     els.tabs.forEach((t, i) => {
       t.addEventListener("click", () => setTab(i));
       t.addEventListener("keydown", (e) => {
-        if (e.key !== "ArrowRight" && e.key !== "ArrowLeft") return;
+        // Simple mode adds Home and End, for the first and last tabs.
+        const next = { ArrowRight: (i + 1) % 3, ArrowLeft: (i + 2) % 3, ...(SIMPLE ? { Home: 0, End: 2 } : {}) }[e.key];
+        if (next === undefined) return;
         e.preventDefault();
         e.stopPropagation();
-        const next = (i + (e.key === "ArrowRight" ? 1 : 2)) % 3;
         setTab(next);
         els.tabs[next].focus();
       });
@@ -1407,9 +1640,28 @@ import { MersenneTwister, createLogic } from "./logic.js";
       title.addEventListener("click", () => (openMenuEl === menu ? closeMenus() : openMenu(menu)));
       title.addEventListener("mouseenter", () => { if (openMenuEl && openMenuEl !== menu) openMenu(menu); });
     }
+    // In simple mode, as in Windows, a click outside an open menu only closes it: what the menu covered can't be
+    // clicked by accident while it's open.
+    let swallowClick = false;
     document.addEventListener("pointerdown", (e) => {
-      if (openMenuEl && !openMenuEl.contains(e.target) && !e.target.closest?.(".menu-title")) closeMenus();
+      swallowClick = false;
+      if (openMenuEl && !openMenuEl.contains(e.target) && !e.target.closest?.(".menu-title")) {
+        closeMenus();
+        swallowClick = SIMPLE;
+      }
     });
+    document.addEventListener("click", (e) => {
+      if (!swallowClick) return;
+      swallowClick = false;
+      // A click from the keyboard or the script has no press to swallow.
+      if (e.detail === 0) return;
+      e.preventDefault();
+      e.stopPropagation();
+    }, true);
+    // A press that ends without a click, such as a drag or a touch that scrolls, mustn't leave a later click swallowed.
+    for (const type of ["pointerup", "pointercancel"]) {
+      document.addEventListener(type, () => { if (swallowClick) setTimeout(() => { swallowClick = false; }); });
+    }
 
     document.addEventListener("click", (e) => {
       if (!(e.target instanceof Element)) return;
@@ -1427,12 +1679,20 @@ import { MersenneTwister, createLogic } from "./logic.js";
       const copy = e.target.closest("[data-copy]");
       if (copy) {
         const input = $(copy.dataset.copy);
+        // Simple mode says in the dialog whether the link was copied.
+        const say = (text) => {
+          if (!SIMPLE) return;
+          $("shareStatus").textContent = "";
+          setTimeout(() => { $("shareStatus").textContent = text; }, 50);
+        };
         copyText(input.value).then((ok) => {
           if (ok) {
             sfx("button");
+            say("Copied the link.");
           } else {
             input.focus();
             input.select();
+            say("Couldn't copy the link. It's selected, so press Ctrl+C to copy it.");
           }
         });
         return;
@@ -1500,7 +1760,7 @@ import { MersenneTwister, createLogic } from "./logic.js";
       const url = lobbyUrl($("lobbyCode").value, spectate);
       if (!url) {
         sfx("error");
-        $("lobbyErr").hidden = false;
+        showFieldError($("lobbyCode"), $("lobbyErr"));
         return;
       }
       closeDialog($("dlgLobby"));
@@ -1511,7 +1771,7 @@ import { MersenneTwister, createLogic } from "./logic.js";
       const link = parseShare($("openInput").value);
       if (!link) {
         sfx("error");
-        $("openErr").hidden = false;
+        showFieldError($("openInput"), $("openErr"));
         return;
       }
       closeDialog($("dlgOpen"));
@@ -1527,7 +1787,13 @@ import { MersenneTwister, createLogic } from "./logic.js";
       toast("Loaded the shared link");
     });
 
-    bindSwipes();
+    // Simple mode has buttons in place of swipes, and its menus and tooltips work from the keyboard.
+    if (SIMPLE) {
+      bindMenuKeys();
+      bindSimpleTips();
+    } else {
+      bindSwipes();
+    }
     // The phone layout's logs change size with the screen, and their scrollbars follow.
     window.addEventListener("resize", () => { for (const log of logBars.keys()) paintLogBar(log); });
 
@@ -1541,7 +1807,7 @@ import { MersenneTwister, createLogic } from "./logic.js";
     document.addEventListener("pointermove", moveTip);
     document.addEventListener("pointerover", onPointerOver);
     document.documentElement.addEventListener("mouseleave", () => { handCursor = false; });
-    document.documentElement.addEventListener("mouseleave", hideTip);
+    document.documentElement.addEventListener("mouseleave", () => { if (!SIMPLE || tipBy === "mouse") hideTip(); });
     document.addEventListener("pointerdown", warmUp, { capture: true, once: true });
     document.addEventListener("keydown", warmUp, { capture: true, once: true });
 
@@ -1561,14 +1827,61 @@ import { MersenneTwister, createLogic } from "./logic.js";
     });
   }
 
+  // Simple mode's labels and words, where the full page has images, mouse-only tooltips or short forms. Every control
+  // says what it does in its own text, and every link that opens a new tab says so.
+  function setUpSimple() {
+    document.querySelector(".site-title").setAttribute("role", "banner");
+    const newTab = () => [h("span", { className: "new-tab", "aria-hidden": "true" }, "↗"), h("span", { className: "sr-only" }, " (opens in a new tab)")];
+    for (const [id, text] of [["optionsBig", "Options"], ["techBtn", "Tech Tree"], ["shareBtn", "Copy Share Link"], ["poolShareBtn", "Copy Pool Link"]]) {
+      $(id).removeAttribute("aria-label");
+      $(id).replaceChildren(text, ...(id === "techBtn" ? newTab() : []));
+    }
+    for (const a of document.querySelectorAll("a[target='_blank']")) {
+      const text = a.querySelector(":scope > span") || a;
+      if (a.hostname === "www.youtube.com") text.append(h("span", { className: "sr-only" }, " on YouTube"));
+      text.append(...newTab());
+    }
+    $("menu-civs").querySelector("[data-act='techtree'] > span").append(...newTab());
+    $("showRemainingLabel").lastChild.textContent = "Show remaining civs";
+    $("enabledCount").setAttribute("aria-live", "polite");
+    for (const id of ["drawnCount", "remainingCount"]) {
+      $(id).setAttribute("role", "heading");
+      $(id).setAttribute("aria-level", "2");
+    }
+    $("dlgMsg").setAttribute("aria-describedby", "msgText");
+    // Each Copy button in the Share dialog is named after its row.
+    for (const row of document.querySelectorAll(".share-row")) {
+      const label = row.querySelector("label");
+      const button = row.querySelector("[data-copy]");
+      label.id = "label-" + button.dataset.copy;
+      button.id = "copy-" + button.dataset.copy;
+      button.setAttribute("aria-labelledby", `${button.id} ${label.id}`);
+    }
+    // The fields' hints say what to type, and their errors how to put it right.
+    const lobbyHint = document.querySelector("#dlgLobby .hint");
+    lobbyHint.id = "lobbyHint";
+    lobbyHint.textContent = "A lobby code has 6 to 12 digits, such as 123456789. Age of Empires II: Definitive Edition must already be running.";
+    $("lobbyCode").removeAttribute("placeholder");
+    $("lobbyCode").dataset.hint = "lobbyHint";
+    $("lobbyErr").textContent = "That isn't a lobby code. Type 6 to 12 digits, such as 123456789, or a link such as aoe2de://0/123456789.";
+    $("openHint").textContent = `A share link has #p= in it, such as ${location.href.split("#")[0]}#p=1Cg4QBAgiAl8.`;
+    $("openInput").dataset.hint = "openHint";
+    $("openErr").textContent = "That isn't a Fresh Random Civ Picker link. Paste a whole share link, with #p= in it.";
+    for (const input of [$("lobbyCode"), $("openInput")]) input.setAttribute("aria-describedby", input.dataset.hint);
+  }
+
   // ---- Start ----
 
   $("aboutVersion").textContent = "v" + VERSION;
   buildPoolControls();
-  for (const log of [els.drawnLog, els.remainingLog]) {
-    scrollInstantly(log);
-    if (!SIMPLE) buildLogBar(log);
+  // Simple mode's logs scroll as the browser scrolls them.
+  if (!SIMPLE) {
+    for (const log of [els.drawnLog, els.remainingLog]) {
+      scrollInstantly(log);
+      buildLogBar(log);
+    }
   }
+  if (SIMPLE) setUpSimple();
   // The Draw Civ tab's images that first show on a hover or press: the external icon in the menus and tooltips, and
   // the pressed text button on a desktop or the pressed menu button on a phone. The CSS loads the ones it shows.
   const preloadLanding = () => preload("ui/external", PHONE.matches ? "ui/button_pressed_9slice" : "ui/button_pressed");

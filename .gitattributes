@@ -1,2 +1,4 @@
 # Preset fixtures are compared byte for byte, so they keep the desktop app's CRLF line ends in every checkout.
 tests/fixtures/presets/*.txt -text
+# axe-core, as published: kept byte for byte, and not shown in diffs
+tests/vendor/** -text -diff

@@ -38,7 +38,7 @@ body {
   position: absolute; left: 0; right: 0; top: calc(32px / 1.75); max-width: 92rem; margin: 0 auto; padding: 0 1rem;
   font-size: 0;
 }
-.site-title::before {
+:root:not([data-simple]) .site-title::before {
   content: ""; display: block; width: calc(141px / 1.75); height: calc(43px / 1.75); background: var(--title-ink);
   -webkit-mask: url("images/ui/title.webp") 0 0 / 100% 100%; mask: url("images/ui/title.webp") 0 0 / 100% 100%;
 }
@@ -308,23 +308,9 @@ body {
 :root:not([data-simple]) .civ:hover { background: #dccb70; }
 :root:not([data-simple]) .civ:hover:has(input:not(:checked)) { background: #dc6a5c; }
 
-/* Simple mode (/simple): no images or sounds, so image buttons become text buttons. */
-[data-simple] #civIcon, [data-simple] #editionIcon,
-[data-simple] #soundGroup, [data-simple] .app-icon { display: none !important; }
-[data-simple] #optionsBig, [data-simple] #techBtn, [data-simple] #shareBtn, [data-simple] #poolShareBtn {
-  height: 30px; background: #e1e1e1; border: 1px solid #adadad; font: inherit; color: #000;
-}
-[data-simple] #optionsBig:hover, [data-simple] #techBtn:hover, [data-simple] #shareBtn:hover, [data-simple] #poolShareBtn:hover { background: #e5f1fb; border-color: var(--accent); }
-[data-simple] #optionsBig:active, [data-simple] #techBtn:active, [data-simple] #shareBtn:active, [data-simple] #poolShareBtn:active { background: #cce4f7; border-color: #005499; }
-[data-simple] #optionsBig { left: 60px; top: 60px; width: 83px; }
-[data-simple] #optionsBig::after { content: "Options"; }
-[data-simple] #techBtn { left: 374px; top: 406px; width: 80px; }
-[data-simple] #techBtn::after { content: "Tech Tree"; }
-[data-simple] #shareBtn { left: 217px; top: 388px; width: 100px; }
-[data-simple] #shareBtn::after, [data-simple] #poolShareBtn::after { content: "Share"; }
-[data-simple] #poolShareBtn { left: 424px; top: 470px; width: 100px; }
-[data-simple] .ed-icon { width: 13px; height: 13px; margin: 0 4px 0 2px; border: 1px solid #333; border-radius: 50%; background: #fff; }
-[data-simple] .edition[aria-pressed="true"] .ed-icon { background: radial-gradient(#000 0 3px, #fff 3.5px); }
+/* Simple mode (/simple) has a stylesheet of its own, simple/simple.css, which only it loads. Its extra elements, marked
+   .simple, stay hidden here. */
+:root:not([data-simple]) .simple { display: none !important; }
 
 /* Status messages show just below the window, without moving it. */
 #app { position: relative; }
@@ -509,7 +495,7 @@ kbd.key {
 }
 @media (max-width: 609px) {
   :root { --tabbar: 64px; }
-  .desk { display: none !important; }
+  :root:not([data-simple]) .desk { display: none !important; }
   html, body { height: 100%; overflow: hidden; overscroll-behavior: none; }
   body { min-width: 0; min-height: 0; padding: 0; display: block; font-size: 13px; -webkit-tap-highlight-color: transparent; }
   #app { position: fixed; inset: 0; }
@@ -569,7 +555,6 @@ kbd.key {
   .panel { display: grid; gap: 6px 10px; padding: 58px 14px 10px; }
   .panel > :not(.sb) { position: static; }
   :root :is(#civIcon, #civGhost, #editionIcon, #shareBtn, #poolShareBtn) { position: relative; left: auto; top: auto; }
-  [data-simple] :is(#shareBtn, #poolShareBtn) { width: 60px; }
 
   /* Draw Civ tab: the round counter level with the menu button, the civ in the middle and the swipe hints at the
      bottom. touch-action: none keeps the browser from scrolling, zooming or reloading the page on a swipe. The swipe

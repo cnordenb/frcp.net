@@ -1,0 +1,276 @@
+/* Simple mode (/simple), loaded after style.css by simple/index.html: no images or sounds, and built to meet WCAG 2.2
+   at level AAA. In place of the desktop app's pixel positions, each tab is a grid that grows with its text, so the
+   page works at any zoom, width or text spacing. Every control is at least 44 x 44 px, text is 16 px with 1.5 line
+   spacing and at least 7:1 contrast, and the focus ring is a 3 px black outline. At phone widths the page keeps this
+   layout, with the menu bar and buttons in place of the phone layout's tab bar, hamburger and swipes. Selectors start
+   with [data-simple] so that they outrank style.css's rules for the same elements. */
+
+[data-simple] {
+  --ink: #000;
+  --hint: #444;
+  --link: #00478a;
+  --err: #8f1b10;
+  --edge: #767676;
+  --mark: #00478a;
+  --face: #fff;
+  --target: 44px;
+}
+[data-simple] body {
+  min-width: 0; padding: 16px; justify-content: flex-start; font: 16px/1.5 var(--ui);
+}
+[data-simple] :is(#civIcon, #civGhost, #editionIcon, #soundGroup, .app-icon, .mob) { display: none !important; }
+
+/* The site's name, as text */
+[data-simple] .site-title {
+  position: static; align-self: flex-start; max-width: none; margin: 0 0 12px; padding: 0;
+  font-size: 1.5rem; font-weight: 700; line-height: 1.25; color: var(--title-ink);
+}
+
+/* The window */
+[data-simple] #app { width: 100%; max-width: 900px; }
+[data-simple] .window { width: auto; user-select: auto; -webkit-user-select: auto; }
+[data-simple] .titlebar { height: auto; min-height: var(--target); padding-left: 12px; font: inherit; }
+[data-simple] .titlebar h1 { font-size: 1rem; font-weight: 700; }
+[data-simple] .dlg-x { display: block; flex: none; width: var(--target); height: var(--target); font-size: 1.125rem; cursor: pointer; }
+[data-simple] .dlg-x:hover { background: #a50e1b; color: #fff; }
+
+/* Menus: titles and items 44 px tall. Links that open a new tab end in an arrow, which script.js adds. */
+[data-simple] .menubar { height: auto; flex-wrap: wrap; padding: 0 4px; }
+[data-simple] .menu-title { height: var(--target); min-width: var(--target); padding: 0 12px; }
+[data-simple] .menu-title:hover { background: #e5f3ff; border-color: #767676; }
+[data-simple] .menu.open .menu-title { background: #cce8ff; border-color: #767676; }
+[data-simple] .menu-list { top: 100%; min-width: 18rem; padding: 4px; background: #fff; border-color: var(--edge); }
+[data-simple] .menu-list > :is(button, a) {
+  min-height: var(--target); align-items: center; gap: 16px; padding: 8px 12px; white-space: normal; color: var(--ink);
+}
+[data-simple] .menu-list > :is(button, a):is(:hover, :focus-visible) { background: #cce8ff; }
+[data-simple] .menu-list > :is(button, a):focus-visible { outline: 3px solid var(--ink); outline-offset: -3px; }
+[data-simple] .menu-list hr { margin: 4px 0; border-top-color: var(--edge); }
+[data-simple] .new-tab { margin-left: .3em; }
+
+/* Tabs */
+[data-simple] .client { width: auto; height: auto; overflow: visible; }
+[data-simple] .frame { display: none; }
+[data-simple] .tabstrip {
+  position: static; inset: auto; height: auto; display: flex; flex-wrap: wrap; gap: 4px; padding: 4px 8px 0;
+  border-bottom: 1px solid var(--edge);
+}
+[data-simple] .tabstrip .tab {
+  position: relative; top: 0; flex: 0 1 auto; width: auto; height: auto; min-height: var(--target); min-width: var(--target);
+  margin: 0 0 -1px; padding: 0 16px; border: 1px solid var(--edge); background: #f0f0f0; color: var(--ink); font: inherit;
+}
+[data-simple] .tabstrip .tab:hover { background: #d8eaf9; }
+[data-simple] .tabstrip .tab[aria-selected="true"] {
+  z-index: 1; background: #fff; border-bottom-color: #fff; font-weight: 700; box-shadow: inset 0 4px 0 var(--mark);
+}
+
+/* Panels: one grid per tab. Each tab's controls come in the page's order, so the reading and focus orders match. */
+[data-simple] .panel { position: static; display: grid; gap: 12px 16px; padding: 16px; align-items: center; touch-action: auto; }
+[data-simple] .panel > * { position: static; }
+[data-simple] .label { margin: 0; white-space: normal; }
+
+/* Buttons, 44 px or more */
+[data-simple] .btn, [data-simple] :is(#optionsBig, #techBtn, #shareBtn, #poolShareBtn) {
+  position: static; width: auto; height: auto; min-width: var(--target); min-height: var(--target); margin: 0; padding: 8px 16px;
+  border: 1px solid var(--edge); border-radius: 4px; background: #e8e8e8; color: var(--ink); font: inherit; line-height: 1.25;
+  text-align: center; cursor: pointer;
+}
+[data-simple] :is(#drawBtn, #resetBtn, #clearLogBtn, #enableAllBtn, #disableAllBtn) { width: auto; height: auto; }
+[data-simple] .btn:hover, [data-simple] :is(#optionsBig, #techBtn, #shareBtn, #poolShareBtn):hover { background: #d8eaf9; border-color: var(--mark); }
+[data-simple] .btn:active, [data-simple] :is(#optionsBig, #techBtn, #shareBtn, #poolShareBtn):active { background: #b9d9f4; border-color: var(--mark); }
+
+/* Checkboxes: the whole label, 44 px tall, is the target, and the focus ring goes round it. */
+[data-simple] input[type="checkbox"] { flex: none; width: 20px; height: 20px; margin: 0; accent-color: var(--mark); }
+[data-simple] .chk, [data-simple] :is(#showRemainingLabel, #autoToggleLabel, #autoResetLabel) {
+  position: static; height: auto; min-height: var(--target); gap: 10px; padding: 0 8px; white-space: normal;
+}
+[data-simple] label:has(> input:focus-visible) { outline: 3px solid var(--ink); outline-offset: 2px; }
+[data-simple] label > input:focus-visible { outline: none; }
+
+/* Focus: a 3 px black outline 2 px out, on everything */
+[data-simple] :focus-visible { outline: 3px solid var(--ink); outline-offset: 2px; box-shadow: none; }
+
+/* Draw Civ tab: the civ, then Draw and Reset, with Options above and Tech Tree and the count below */
+[data-simple] .client[data-tab="0"] .panel {
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+  grid-template-areas: "options options" "name name" "draw draw" "reset reset" "tech counter";
+  justify-items: center; padding-top: 16px;
+}
+[data-simple] #optionsBig { grid-area: options; justify-self: start; }
+[data-simple] #civName {
+  grid-area: name; width: auto; max-width: 100%; margin: 16px 0 4px; font-size: 2rem; font-weight: 700; line-height: 1.25; text-align: center;
+}
+[data-simple] #drawBtn { grid-area: draw; min-width: min(10rem, 100%); padding: 12px 32px; font-size: 1.25rem; }
+[data-simple] #resetBtn { grid-area: reset; min-width: min(10rem, 100%); }
+[data-simple] #techBtn { grid-area: tech; justify-self: start; }
+[data-simple] #roundCounter { grid-area: counter; justify-self: end; left: 0; top: 0; width: auto; text-align: right; }
+
+/* Log tab: the civ, Draw and Reset, then the drawn and remaining logs side by side, and the share button */
+[data-simple] .client[data-tab="1"] .panel {
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  grid-template-areas: "name name name name" "draw draw reset reset" "dcount clear rcount show" "dlog dlog rlog rlog" "share share share share";
+  justify-items: start;
+}
+[data-simple] .client[data-tab="1"] #civName { display: block; justify-self: center; margin-top: 0; }
+[data-simple] .client[data-tab="1"] #drawBtn { justify-self: end; }
+[data-simple] .client[data-tab="1"] #resetBtn { justify-self: start; }
+[data-simple] #drawnCount { grid-area: dcount; }
+[data-simple] #clearLogBtn { grid-area: clear; justify-self: end; }
+[data-simple] #remainingCount { grid-area: rcount; }
+[data-simple] #showRemainingLabel { grid-area: show; justify-self: end; }
+[data-simple] #drawnLog { grid-area: dlog; }
+[data-simple] #remainingLog { grid-area: rlog; }
+[data-simple] #shareBtn { grid-area: share; justify-self: center; }
+[data-simple] :is(#drawnCount, #remainingCount, #enabledCount) { font-size: 1.125rem; font-weight: 700; }
+[data-simple] :is(#drawnLog, #remainingLog) {
+  justify-self: stretch; align-self: stretch; width: auto; height: clamp(8rem, 60vh, 26rem); padding: 8px 12px;
+  border-color: var(--edge); font: inherit; touch-action: auto;
+}
+[data-simple] .log-round { margin: 0; padding: 0; list-style: none; }
+[data-simple] .log-row { display: block; }
+
+/* Civ Pool tab: editions with the count and Auto-toggle beside them, the expansions, the civs, then the buttons */
+[data-simple] .client[data-tab="2"] .panel {
+  grid-template-columns: auto auto 1fr auto;
+  grid-template-areas: "ed ed count count" "ed ed tog tog" "dlc dlc dlc dlc" "civs civs civs civs" "enable disable reset share";
+  gap: 12px 16px; justify-items: start;
+}
+[data-simple] #editionGroup { grid-area: ed; display: flex; flex-direction: column; gap: 0; }
+[data-simple] .edition {
+  position: static; width: auto; height: auto; min-height: var(--target); gap: 10px; padding: 0 8px; color: var(--ink); white-space: normal;
+}
+[data-simple] .edition[aria-pressed="true"] { font-weight: inherit; }
+[data-simple] .ed-icon { width: 20px; height: 20px; border: 2px solid var(--ink); border-radius: 50%; background: #fff; }
+[data-simple] .edition[aria-pressed="true"] .ed-icon { background: radial-gradient(var(--ink) 0 5px, #fff 5.5px); }
+[data-simple] #enabledCount { grid-area: count; justify-self: start; }
+[data-simple] #autoToggleLabel { grid-area: tog; }
+[data-simple] .panel > div[data-edition] {
+  grid-area: dlc; justify-self: stretch; display: grid; grid-template-columns: repeat(auto-fill, minmax(min(12rem, 100%), 1fr)); gap: 0 8px;
+}
+[data-simple] .panel > div[data-edition][hidden] { display: none !important; }
+[data-simple] .panel > div[data-edition] > label[data-dlc] { display: flex; width: auto; height: auto; }
+[data-simple] #civGrid {
+  grid-area: civs; justify-self: stretch; display: grid; grid-template-columns: repeat(auto-fill, minmax(min(8rem, 100%), 1fr));
+  grid-auto-rows: auto; gap: 0 8px; overflow: visible;
+}
+[data-simple] #civGrid > .civ { width: auto; height: auto; }
+[data-simple] .chk-name { min-width: 0; overflow-wrap: anywhere; }
+[data-simple] .icon-chk input:checked ~ .chk-name, [data-simple] .icon-chk input:not(:checked) ~ .chk-name {
+  font-weight: inherit; font-style: normal; text-decoration: none;
+}
+[data-simple] #enableAllBtn { grid-area: enable; width: auto; }
+[data-simple] #disableAllBtn { grid-area: disable; width: auto; }
+[data-simple] #autoResetLabel { grid-area: reset; }
+[data-simple] #poolShareBtn { grid-area: share; justify-self: end; }
+
+/* Status bar: the latest message, in the page's flow under the window, so it never covers anything. It stays until
+   the next change or message. */
+[data-simple] #toast {
+  position: static; inset: auto; z-index: auto; transform: none; margin: 0; padding: 8px 12px; min-height: calc(1.5em + 18px);
+  border: 1px solid var(--frame); border-top: 0; border-radius: 0; background: #f0f0f0; color: var(--ink);
+  white-space: normal; box-shadow: none; pointer-events: auto; opacity: 1; transition: none;
+}
+
+/* Tooltips sit against their control, can be hovered and also show on keyboard focus. */
+[data-simple] #tip {
+  max-width: min(24rem, calc(100vw - 16px)); padding: 6px 10px; color: var(--ink); background: #fff; border-color: var(--ink);
+  font: 1rem/1.5 var(--ui); pointer-events: auto;
+}
+
+/* Dialogs */
+[data-simple] dialog.win {
+  width: min(var(--w, 36rem), calc(100vw - 16px)); max-width: calc(100vw - 16px); max-height: calc(100dvh - 16px);
+  background: var(--face); font: 1rem/1.5 var(--ui);
+}
+[data-simple] #dlgOptions, [data-simple] #dlgHotkeys { --w: 58rem; }
+[data-simple] #dlgHelp, [data-simple] #dlgShare { --w: 46rem; }
+[data-simple] #dlgLobby, [data-simple] #dlgMsg { --w: 32rem; }
+[data-simple] .dlg-title { height: auto; min-height: var(--target); padding-left: 16px; background: #fff; }
+[data-simple] .dlg-title h2 { font-size: 1.125rem; font-weight: 700; }
+[data-simple] .dlg-body { padding: 16px; }
+[data-simple] .dlg-body p, [data-simple] .hint { max-width: 60ch; }
+[data-simple] .dlg-body p { margin: 0 0 1.5lh; }
+[data-simple] .dlg-body p:last-child { margin-bottom: 0; }
+[data-simple] .dlg-buttons { flex-wrap: wrap; gap: 8px; padding: 16px; }
+[data-simple] .dlg-buttons .btn, [data-simple] .dlg-body .btn { min-width: 6rem; height: auto; }
+[data-simple] .dlg-body a { color: var(--link); }
+[data-simple] .hint { color: var(--hint); overflow-wrap: anywhere; }
+[data-simple] .err { color: var(--err); font-weight: 700; }
+[data-simple] :is(.about, .share, .preview, .msg, .field) { width: auto; }
+[data-simple] .group { padding: 8px 12px 12px; border-color: var(--edge); }
+[data-simple] .group legend { padding: 0 4px; font-weight: 700; }
+[data-simple] .row { min-height: var(--target); gap: 10px; white-space: normal; }
+[data-simple] .opt-grid { grid-template-columns: repeat(auto-fit, minmax(min(16rem, 100%), 1fr)); gap: 16px; }
+[data-simple] .span2 { grid-column: 1 / -1; }
+[data-simple] .inline { flex-wrap: wrap; gap: 12px; }
+/* Simple mode always uses the browser-friendly hotkeys, so the mode choice is hidden, and it has no civ icon to show. */
+[data-simple] #dlgOptions .row:has(> :is(select[name="hotkeys"], input[name="showIcon"])) { display: none; }
+[data-simple] dialog select, [data-simple] dialog input[type="text"] {
+  height: var(--target); padding: 0 8px; border-color: var(--edge); font: inherit;
+}
+[data-simple] #freshLabel { display: flex; align-items: center; min-height: var(--target); }
+[data-simple] dialog input[type="range"] { height: var(--target); margin: 0; accent-color: var(--mark); }
+[data-simple] .field { width: auto; gap: 8px; }
+[data-simple] .share-row { grid-template-columns: minmax(0, 1fr) auto; gap: 8px; }
+[data-simple] .share-row label { grid-column: 1 / -1; }
+[data-simple] .facts dt { color: var(--hint); }
+[data-simple] .hk-grid { grid-template-columns: repeat(auto-fit, minmax(min(16rem, 100%), 1fr)); gap: 16px 32px; }
+[data-simple] .hk-grid h3 { font-size: 1rem; }
+[data-simple] .hk-grid .global { grid-column: 1 / -1; }
+[data-simple] .hk-grid .global ul { columns: 16rem; }
+[data-simple] .hk-grid li { white-space: normal; line-height: 2; }
+[data-simple] kbd.key { min-width: 1.75em; padding: 0 6px; font: .875rem/1.5 var(--ui); color: var(--ink); background: #fff; border-color: var(--edge); }
+[data-simple] .help h3 { margin: 1.5lh 0 .5lh; font-size: 1.0625rem; }
+[data-simple] .help h3:first-child { margin-top: 0; }
+[data-simple] .terms { display: grid; grid-template-columns: minmax(8rem, max-content) minmax(0, 1fr); gap: 8px 16px; margin: 0; max-width: 70ch; }
+[data-simple] .terms dt { font-weight: 700; }
+[data-simple] .terms dd { margin: 0; }
+[data-simple] #shareStatus:empty { display: none; }
+
+/* Text only screen readers read */
+[data-simple] .sr-only {
+  position: absolute; width: 1px; height: 1px; margin: -1px; padding: 0; overflow: hidden; clip-path: inset(50%); white-space: nowrap; border: 0;
+}
+
+/* Windows high contrast and other forced colours: the edition dot is drawn in the system colours. */
+@media (forced-colors: active) {
+  [data-simple] .ed-icon { forced-color-adjust: none; border-color: CanvasText; background: Canvas; }
+  [data-simple] .edition[aria-pressed="true"] .ed-icon { background: radial-gradient(CanvasText 0 5px, Canvas 5.5px); }
+}
+
+/* Below the window's full width, an open menu takes a row of its own under the menu bar, the width of the window, and
+   moves the page down rather than covering it: none runs off the screen or hides a control. */
+@media (max-width: 899px) {
+  [data-simple] .menu { display: contents; }
+  [data-simple] .menu-list { position: static; order: 1; flex-basis: 100%; min-width: 0; margin-bottom: 4px; box-shadow: none; }
+}
+
+/* Up to 200 % zoom on a 1280 px screen, and on phones, the Log and Civ Pool tabs stack in two columns. */
+@media (max-width: 719px) {
+  [data-simple] .client[data-tab="1"] .panel {
+    grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+    grid-template-areas: "name name" "draw reset" "dcount clear" "dlog dlog" "rcount show" "rlog rlog" "share share";
+  }
+  [data-simple] .client[data-tab="2"] .panel {
+    grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+    grid-template-areas: "ed ed" "count count" "tog tog" "dlc dlc" "civs civs" "enable disable" "reset reset" "share share";
+  }
+  [data-simple] #poolShareBtn { justify-self: start; }
+}
+
+/* Narrow screens, phones and high zoom: the same page in one or two columns. These rules undo the parts of the
+   phone layout in style.css that simple mode doesn't use: the fixed screen, the tab bar and the hamburger. */
+@media (max-width: 609px) {
+  [data-simple], [data-simple] body { height: auto; overflow: visible; overscroll-behavior: auto; }
+  [data-simple] body { display: flex; min-height: 100vh; padding: 8px; font-size: 16px; }
+  [data-simple] #app { position: relative; inset: auto; }
+  [data-simple] .window { position: static; inset: auto; width: auto; border: 1px solid var(--frame); }
+  [data-simple] :is(.titlebar, .menubar) { display: flex; }
+  [data-simple] .client { position: relative; inset: auto; width: auto; height: auto; }
+  [data-simple] .menu-title { padding: 0 8px; }
+  [data-simple] .panel { padding: 12px; }
+  [data-simple] .client[data-tab="0"] .panel { padding-top: 12px; touch-action: auto; -webkit-touch-callout: default; }
+  [data-simple] .dlg-x { display: block; }
+  [data-simple] .terms { grid-template-columns: minmax(0, 1fr); gap: 0 16px; }
+  [data-simple] .terms dd { margin-bottom: 8px; }
+}
