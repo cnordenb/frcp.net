@@ -59,11 +59,13 @@ body {
 :root:not([data-simple]) .client { background: transparent; }
 /* Inside the parchment window and its dialogs, the arrow and the pointing hand are the game's cursors. Rules for
    an arrow or a hand use var(--arrow, default) and var(--hand, pointer), so simple mode and the page around the
-   window keep the system cursors. */
-:root:not([data-simple]) :is(.window, dialog.win) {
-  --arrow: url("images/ui/cursor.webp") 0 0, default;
-  --hand: url("images/ui/cursor_pointing.webp") 1 0, pointer;
-  cursor: var(--arrow);
+   window keep the system cursors. A touch screen with no mouse shows no cursor, so it doesn't load them. */
+@media (any-hover: hover) {
+  :root:not([data-simple]) :is(.window, dialog.win) {
+    --arrow: url("images/ui/cursor.webp") 0 0, default;
+    --hand: url("images/ui/cursor_pointing.webp") 1 0, pointer;
+    cursor: var(--arrow);
+  }
 }
 .titlebar { height: 30px; display: flex; align-items: center; justify-content: space-between; padding-left: 10px; font: 12px var(--ui); }
 .titlebar h1 { display: flex; align-items: center; gap: 6px; margin: 0; font: inherit; font-weight: 600; }
@@ -199,7 +201,6 @@ body {
 :is(#roundCounter, #drawnCount, #remainingCount, #enabledCount) { font-weight: 600; }
 .chk { position: absolute; display: flex; align-items: center; gap: 4px; white-space: nowrap; cursor: var(--hand, pointer); }
 .chk input { flex: none; margin: 0; cursor: var(--hand, pointer); }
-.chk img { flex: none; display: block; }
 /* Parchment checkboxes: wooden box images in place of the system checkbox, pressed while the label is held down.
    The checkbox atlas has the unticked box above the ticked one, each with its pressed look on the right. */
 :root:not([data-simple]) input[type="checkbox"] {
@@ -285,6 +286,8 @@ body {
 .chk-icon { position: relative; flex: none; }
 .chk-icon > * { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: contain; }
 .chk-off { visibility: hidden; transform: scale(.9); }
+/* The off cross is a CSS image rather than an img, so it loads with the Civ Pool tab rather than the page. */
+:root:not([data-simple]) .chk-off { background: url("images/ui/off.webp") center / contain no-repeat; }
 .icon-chk input:not(:checked) ~ .chk-icon .chk-face { filter: grayscale(1); }
 .icon-chk input:not(:checked) ~ .chk-icon .chk-off { visibility: visible; }
 .icon-chk input:focus-visible ~ .chk-icon { outline: 1px dotted #000; outline-offset: 1px; }
@@ -302,7 +305,7 @@ body {
 :root:not([data-simple]) .civ:hover:has(input:not(:checked)) { background: #dc6a5c; }
 
 /* Simple mode (/simple): no images or sounds, so image buttons become text buttons. */
-[data-simple] .chk img, [data-simple] #civIcon, [data-simple] #editionIcon,
+[data-simple] #civIcon, [data-simple] #editionIcon,
 [data-simple] #soundGroup, [data-simple] .app-icon { display: none !important; }
 [data-simple] #optionsBig, [data-simple] #techBtn, [data-simple] #shareBtn, [data-simple] #poolShareBtn {
   height: 30px; background: #e1e1e1; border: 1px solid #adadad; font: inherit; color: #000;

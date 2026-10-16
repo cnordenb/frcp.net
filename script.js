@@ -442,17 +442,26 @@ import { MersenneTwister, createLogic } from "./logic.js";
     syncOptions();
   }
 
-  // A log's scrollbar shows only once the log overflows, so its images load when the Log tab first opens rather than
-  // flickering in with the first bar.
-  let logBarImages = SIMPLE;
+  // Starts loading images that first show on a hover or press, or once a log overflows, so they don't flicker in.
+  // Each loads once, when the tab or dialog that shows it first opens, so the page loads only the Draw Civ tab's:
+  // hidden tabs and closed dialogs don't load their CSS images either.
+  const preloaded = new Set();
+  function preload(...names) {
+    for (const t of names) {
+      if (SIMPLE || preloaded.has(t)) continue;
+      preloaded.add(t);
+      new Image().src = `images/${t}.webp`;
+    }
+  }
+  // Each tab's images that first show on a press or, for the log scrollbars, once a log overflows. The pressed text
+  // button is among them, as the phone layout's Draw Civ tab has no text buttons.
+  const TAB_IMAGES = [[], ["ui/scrollbar_3slice", "ui/scrollbar_knob", "ui/button_pressed", "ui/button_pressed_9slice"],
+    ["ui/button_pressed", "ui/button_pressed_9slice"]];
   function setTab(i) {
     if (i === ui.tab) return;
     ui.tab = i;
     sfx("tab");
-    if (i === 1 && !logBarImages) {
-      logBarImages = true;
-      for (const t of ["ui/scrollbar_3slice", "ui/scrollbar_knob"]) new Image().src = `images/${t}.webp`;
-    }
+    preload(...TAB_IMAGES[i]);
     render();
   }
 
@@ -668,7 +677,7 @@ import { MersenneTwister, createLogic } from "./logic.js";
     if (SIMPLE) return "";
     return h("span", { className: "chk-icon", style: { width: size + "px", height: size + "px" } },
       atlasCell("chk-face sprite " + className, i, cols),
-      h("img", { className: "chk-off", src: "images/ui/off.webp", alt: "", width: size, height: size, decoding: "async" }));
+      h("span", { className: "chk-off" }));
   }
   function buildPoolControls() {
     // Edition rows sit where the desktop app's radio buttons are, with an icon in place of the radio circle.
@@ -934,6 +943,8 @@ import { MersenneTwister, createLogic } from "./logic.js";
   function showDialog(d) {
     hideTip();
     closeMenus();
+    // The pressed look of its buttons, which the phone layout hasn't loaded yet
+    preload("ui/button_pressed");
     if (!d.open) d.showModal();
   }
   function closeDialog(d) {
@@ -1547,15 +1558,11 @@ import { MersenneTwister, createLogic } from "./logic.js";
     scrollInstantly(log);
     if (!SIMPLE) buildLogBar(log);
   }
-  // Load the images first shown on a hover, press, tab switch or dialog up front, so they don't flicker in.
-  // The icon atlases are among them, as hidden tabs don't load their CSS images. The Options dialog's slider and the
-  // Civ Pool tab's DLC atlas are left to load as they open, and the log scrollbars as the Log tab opens (see setTab).
-  if (!SIMPLE) {
-    const early = ["ui/button_pressed", "ui/textfield_9slice", "ui/checkbox", "ui/dropdown_button", "ui/x_button",
-      "ui/external", "ui/cursor", "ui/cursor_pointing", "ui/panel_9slice", "ui/log_9slice", "ui/button_9slice",
-      "ui/button_pressed_9slice", "ui/share_icon", "civ/civicon_atlas", "dlc/edition_banners_atlas"];
-    for (const t of early) new Image().src = `images/${t}.webp`;
-  }
+  // The Draw Civ tab's images that first show on a hover or press: the external icon in the menus and tooltips, and
+  // the pressed text button on a desktop or the pressed menu button on a phone. The CSS loads the ones it shows.
+  const preloadLanding = () => preload("ui/external", PHONE.matches ? "ui/button_pressed_9slice" : "ui/button_pressed");
+  preloadLanding();
+  PHONE.addEventListener("change", preloadLanding);
   bind();
 
   if (settings.newRoundOnVisit) closeRound();
