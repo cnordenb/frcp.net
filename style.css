@@ -31,15 +31,18 @@ body {
 /* The site's name at the top left of the page, in the type, colours and place of aoe2vils.net's title on a wide screen:
    Alegreya Bold at 1.55rem, in a column up to 92rem wide with 1rem margins, centred in a 35.75 px row .7rem from the
    top. In a browser window too small for both, the window covers it.
-   Alegreya: Copyright 2011 The Alegreya Project Authors (https://github.com/huertatipografica/Alegreya), under the
-   SIL Open Font License 1.1 (fonts/OFL.txt). */
-@font-face {
-  font-family: Alegreya; font-weight: 700; font-display: block; src: url("fonts/alegreya-bold.woff2") format("woff2");
-}
+   In place of the font, images/ui/title.webp is the name in that type, drawn at 175 % and placed where the font drew
+   its ink (a pixel higher at 100 %, where the font snapped to whole pixels). Its alpha masks a fill of --title-ink,
+   so it takes each theme's colour. The text stays, at size 0, for screen readers. */
 .site-title {
-  position: absolute; left: 0; right: 0; top: calc(.7rem + (35.75px - 1.1em) / 2); max-width: 92rem; margin: 0 auto; padding: 0 1rem;
-  font: 700 1.55rem/1.1 Alegreya, Georgia, "Times New Roman", serif; letter-spacing: -.01em; color: var(--title-ink);
+  position: absolute; left: 0; right: 0; top: calc(32px / 1.75); max-width: 92rem; margin: 0 auto; padding: 0 1rem;
+  font-size: 0;
 }
+.site-title::before {
+  content: ""; display: block; width: calc(141px / 1.75); height: calc(43px / 1.75); background: var(--title-ink);
+  -webkit-mask: url("images/ui/title.webp") 0 0 / 100% 100%; mask: url("images/ui/title.webp") 0 0 / 100% 100%;
+}
+@media (max-resolution: 1dppx) { .site-title { top: calc(32px / 1.75 - 1px); } }
 
 /* Window replica */
 .window {
