@@ -5,3 +5,6 @@ frcp.net is very secure.
 * No ads and no advertising partners to share data with
 * No cookies and no cache save for the user's civ pool, civ draws, and webapp settings
 * HTTPS and TLS, draw your fresh random civs safely from the net with the security of encryption
+* Transparent and open source
+
+If despite the security of frcp.net you find a vulnerability, please contact _hjoerleif_ on Discord through direct message.
