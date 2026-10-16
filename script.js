@@ -1,7 +1,7 @@
 import { MersenneTwister, createLogic } from "./logic.js";
 
 (async () => {
-  const VERSION = "1.0.0";
+  const VERSION = "1.0.2";
   // simple/index.html loads this page with data-simple set: no images, no sounds.
   const SIMPLE = document.documentElement.hasAttribute("data-simple");
 

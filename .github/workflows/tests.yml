@@ -20,7 +20,7 @@ jobs:
           path: desktop
           sparse-checkout: |
             Fresh-Random-Civ-Picker_CPPGUI/data.json
-            Fresh-Random-Civ-Picker_CPPGUI/CivDataLimits.h
+            Fresh-Random-Civ-Picker_CPPGUI/common/CivDataLimits.h
           sparse-checkout-cone-mode: false
 
       - uses: actions/setup-node@v4

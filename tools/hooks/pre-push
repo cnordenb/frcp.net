@@ -1,4 +1,0 @@
-#!/bin/sh
-# Bumps the version on the first push to main 24 hours or more after the last bump: see tools/version.js.
-# A clone runs this once it has: git config core.hooksPath tools/hooks
-exec node tools/version.js pre-push

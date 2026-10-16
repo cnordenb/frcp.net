@@ -48,7 +48,7 @@ test("civ names and edition IDs are single words, as preset files split their li
 });
 
 test("the desktop app has room for every civ", { skip: skipDesktop }, () => {
-  const limits = readFileSync(desktopFile("CivDataLimits.h"), "utf8");
+  const limits = readFileSync(desktopFile("common/CivDataLimits.h"), "utf8");
   const m = /constexpr int MAX_CIVS = (\d+);/.exec(limits);
   assert.ok(m, "CivDataLimits.h has no MAX_CIVS");
   assert.ok(CIVS.length <= Number(m[1]), `${CIVS.length} civs, but the desktop app's MAX_CIVS is ${m[1]}`);
