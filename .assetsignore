@@ -1,0 +1,35 @@
+# Files Cloudflare's wrangler doesn't upload as site assets. The assets directory is the repo root, so without this
+# it uploads everything in the build's checkout, including .git and any node_modules the build installs (wrangler's
+# workerd binary alone is over the 25 MiB limit per asset). Same syntax as .gitignore, matched from the repo root.
+# Wrangler leaves out this file, _headers and _redirects by itself.
+
+# Git, CI and the build
+.git
+.github/
+.gitignore
+.gitattributes
+node_modules/
+.wrangler/
+package.json
+package-lock.json
+wrangler.json
+wrangler.jsonc
+wrangler.toml
+.dev.vars*
+.env*
+
+# For development only: tests, the atlas builder and Paint.NET sources
+/tests/
+/tools/
+*.pdn
+
+# GitHub Pages' custom domain file
+/CNAME
+
+# Local files that .gitignore keeps out of the repo, for deploys from a working copy
+/KLADD.md
+/PLAN.md
+/TODO.md
+/CHANGELOG.md
+/testfonts/
+/images/ui/wip/
