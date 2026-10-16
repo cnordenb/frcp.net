@@ -6,10 +6,6 @@ labels: ''
 assignees: ''
 
 ---
-
-
-# Title
-
 ## Setup
 PC or mobile?
 Which web browser?
