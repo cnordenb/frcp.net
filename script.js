@@ -442,10 +442,17 @@ import { MersenneTwister, createLogic } from "./logic.js";
     syncOptions();
   }
 
+  // A log's scrollbar shows only once the log overflows, so its images load when the Log tab first opens rather than
+  // flickering in with the first bar.
+  let logBarImages = SIMPLE;
   function setTab(i) {
     if (i === ui.tab) return;
     ui.tab = i;
     sfx("tab");
+    if (i === 1 && !logBarImages) {
+      logBarImages = true;
+      for (const t of ["ui/scrollbar_3slice", "ui/scrollbar_knob"]) new Image().src = `images/${t}.webp`;
+    }
     render();
   }
 
@@ -1541,12 +1548,12 @@ import { MersenneTwister, createLogic } from "./logic.js";
     if (!SIMPLE) buildLogBar(log);
   }
   // Load the images first shown on a hover, press, tab switch or dialog up front, so they don't flicker in.
-  // The icon atlases are among them, as hidden tabs don't load their CSS images.
+  // The icon atlases are among them, as hidden tabs don't load their CSS images. The Options dialog's slider and the
+  // Civ Pool tab's DLC atlas are left to load as they open, and the log scrollbars as the Log tab opens (see setTab).
   if (!SIMPLE) {
     const early = ["ui/button_pressed", "ui/textfield_9slice", "ui/checkbox", "ui/dropdown_button", "ui/x_button",
-      "ui/external", "ui/cursor", "ui/cursor_pointing", "ui/slider", "ui/slider_knob", "ui/panel_9slice",
-      "ui/log_9slice", "ui/scrollbar_3slice", "ui/scrollbar_knob", "ui/button_9slice", "ui/button_pressed_9slice",
-      "ui/share_icon", "civ/civicon_atlas", "dlc/dlc_atlas", "dlc/edition_banners_atlas"];
+      "ui/external", "ui/cursor", "ui/cursor_pointing", "ui/panel_9slice", "ui/log_9slice", "ui/button_9slice",
+      "ui/button_pressed_9slice", "ui/share_icon", "civ/civicon_atlas", "dlc/edition_banners_atlas"];
     for (const t of early) new Image().src = `images/${t}.webp`;
   }
   bind();

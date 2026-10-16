@@ -67,8 +67,13 @@ body {
 }
 .titlebar { height: 30px; display: flex; align-items: center; justify-content: space-between; padding-left: 10px; font: 12px var(--ui); }
 .titlebar h1 { display: flex; align-items: center; gap: 6px; margin: 0; font: inherit; font-weight: 600; }
-/* The app icon before the title, as in a Windows title bar: the favicon at 16 px */
-:root:not([data-simple]) .app-icon { flex: none; width: 16px; height: 16px; background: url("favicon.ico") center / 100% 100% no-repeat; }
+/* The app icon before the title, as in a Windows title bar: the favicon at 16 px. It's inline, the favicon's 32 px
+   image as a lossless WebP, because the browser fetches the tab's favicon apart from the page's images, so a
+   url("favicon.ico") here fetched the file a second time. */
+:root:not([data-simple]) .app-icon {
+  flex: none; width: 16px; height: 16px;
+  background: url("data:image/webp;base64,UklGRl4BAABXRUJQVlA4TFIBAAAvH8AHAAWcbdvOL3e2bduY+AVsu6Z2u62jjaONzbZt4xPY7sn93jSzbSRJcbQOHi3+t5jc1ratRLsfyiAnJ6SVH1IGY31MCRO7u7v+/k8A+FMVyUOWj/TKHjfGEPF8lLkEHpETe4hHFinBAQAAj6heTPvu1KVt84cvF7EQBEE8kQaQiJeIvirbirU/aT6zxLnUKkccxPGGIPIBANTtuXQ6AsAjfg0Y4UcqrdxAENEAENI3AZDP2+CuJRyeX3urRjfEFgCIxjsAPCFa1h3AsQRHECoAIJd2gGE7hCm8/npVL3MNKnnBoAlCDV5//bKbuQaVYsGgiwN4AEAu7QD35pxTAWCoQR4TPPCANSyKIQgiB8CyCeKGRHhg0sM5ZgC2MwwBGFeTCysVRGBkwTUtsLFmH4JIgQ8GPBxAEASRAAMQxRkEMYoOLIAXxAoiALauaAP+mw==") center / 100% 100% no-repeat;
+}
 
 .menubar { position: relative; z-index: 20; display: flex; height: 20px; }
 .menu { position: relative; }
