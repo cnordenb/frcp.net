@@ -63,7 +63,9 @@ body {
   cursor: var(--arrow);
 }
 .titlebar { height: 30px; display: flex; align-items: center; justify-content: space-between; padding-left: 10px; font: 12px var(--ui); }
-.titlebar h1 { margin: 0; font: inherit; }
+.titlebar h1 { display: flex; align-items: center; gap: 6px; margin: 0; font: inherit; font-weight: 600; }
+/* The app icon before the title, as in a Windows title bar: the favicon at 16 px */
+:root:not([data-simple]) .app-icon { flex: none; width: 16px; height: 16px; background: url("favicon.ico") center / 100% 100% no-repeat; }
 
 .menubar { position: relative; z-index: 20; display: flex; height: 20px; }
 .menu { position: relative; }
@@ -293,7 +295,7 @@ body {
 
 /* Simple mode (/simple): no images or sounds, so image buttons become text buttons. */
 [data-simple] .chk img, [data-simple] #civIcon, [data-simple] #editionIcon,
-[data-simple] #soundGroup { display: none !important; }
+[data-simple] #soundGroup, [data-simple] .app-icon { display: none !important; }
 [data-simple] #optionsBig, [data-simple] #techBtn, [data-simple] #shareBtn, [data-simple] #poolShareBtn {
   height: 30px; background: #e1e1e1; border: 1px solid #adadad; font: inherit; color: #000;
 }
