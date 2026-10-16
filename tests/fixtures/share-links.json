@@ -1,0 +1,44 @@
+[
+  {
+    "note": "README: a civ pool of AoK civs",
+    "link": "https://frcp.net/#p=1Cg4QBAgiAl8",
+    "edition": "AOK",
+    "off": ["Aztecs", "Huns", "Japanese", "Koreans", "Maya", "Spanish"],
+    "draws": []
+  },
+  {
+    "note": "README: civ pool + draw log",
+    "link": "https://frcp.net/#p=1Cg4QBBgiAl8.yQwJK1pF",
+    "edition": "AOK",
+    "off": ["Aztecs", "Huns", "Koreans", "Maya", "Spanish"],
+    "draws": ["Turks", "Franks", "Teutons", "Byzantines", "Celts", "Vikings", "Saracens", "Britons"]
+  },
+  {
+    "note": "Every DE civ, nothing drawn",
+    "link": "1A__________",
+    "edition": "DE",
+    "off": [],
+    "draws": []
+  },
+  {
+    "note": "Every DE civ, two draws",
+    "link": "1A__________.KQ",
+    "edition": "DE",
+    "off": [],
+    "draws": ["Celts", "Franks"]
+  },
+  {
+    "note": "HD Edition: the DE civs are left out",
+    "link": "1B__________.F",
+    "edition": "HD",
+    "off": [],
+    "draws": ["Britons"]
+  },
+  {
+    "note": "A short bitfield: the first six civs off, every civ past it on",
+    "link": "1AA",
+    "edition": "DE",
+    "off": ["Armenians", "Aztecs", "Bengalis", "Berbers", "Bohemians", "Britons"],
+    "draws": []
+  }
+]

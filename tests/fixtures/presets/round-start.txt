@@ -1,0 +1,68 @@
+CivStates:
+Armenians 1
+Aztecs 0
+Bengalis 1
+Berbers 1
+Bohemians 1
+Britons 1
+Bulgarians 1
+Burgundians 1
+Burmese 1
+Byzantines 1
+Celts 1
+Chinese 1
+Cumans 1
+Danes 1
+Dravidians 1
+Ethiopians 1
+Franks 1
+Georgians 1
+Goths 1
+Gurjaras 1
+Hindustanis 1
+Huns 1
+Inca 1
+Italians 1
+Japanese 1
+Jurchens 1
+Khitans 1
+Khmer 1
+Koreans 1
+Lithuanians 1
+Magyars 1
+Malay 1
+Malians 1
+Mapuche 1
+Maya 1
+Mongols 1
+Muisca 1
+Persians 1
+Poles 1
+Portuguese 1
+Romans 1
+Saracens 1
+Saxons 1
+Shu 1
+Sicilians 1
+Slavs 1
+Spanish 1
+Tatars 1
+Teutons 1
+Tupi 1
+Turks 1
+Varangians 1
+Vietnamese 1
+Vikings 1
+Wei 1
+Wu 0
+DrawnCivs:
+Celts
+Mongols
+EditionState:
+DE
+ContfreshCivArray:
+Huns
+Franks
+Teutons
+Celts
+Mongols
