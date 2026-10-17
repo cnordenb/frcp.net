@@ -570,10 +570,11 @@ kbd.key {
   #swipeHints { grid-area: hints; text-align: center; color: #3d2c1c; }
   #swipeHints p { margin: 0; line-height: 1.7; }
 
-  /* Log tab: Clear Log and the share button over the drawn log and Show over the remaining one, then the counts just
-     over the logs, and the logs filling the rest. The drawn log is the wider, as its lines are the longer. */
+  /* Log tab: the counts just over the logs, the logs filling the rest, then Clear Log and the share button under the
+     drawn log and Show under the remaining one, just over the tab bar. The drawn log is the wider, as its lines are the
+     longer. */
   .client[data-tab="1"] .panel {
-    grid-template: "dctl rctl" auto "dcount rcount" auto "dlog rlog" minmax(0, 1fr) / minmax(0, 5fr) minmax(0, 4fr);
+    grid-template: "dcount rcount" auto "dlog rlog" minmax(0, 1fr) "dctl rctl" auto / minmax(0, 5fr) minmax(0, 4fr);
     align-items: center;
   }
   .client[data-tab="1"] :is(#civIcon, #civName) { display: none; }
