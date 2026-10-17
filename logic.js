@@ -20,7 +20,7 @@ export class MersenneTwister {
     }
     return c.getRandomValues(new Uint32Array(words));
   }
-
+//test
   /** @param {number | number[] | Uint32Array} [seed] Defaults to a 624-word crypto seed. */
   constructor(seed = MersenneTwister.secureSeed()) {
     if (Array.isArray(seed) || ArrayBuffer.isView(seed)) this.seedArray(seed);
