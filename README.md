@@ -13,6 +13,7 @@ Fresh Random Civ Picker in the browser. Ported to HTML, CSS and JavaScript from 
 ## Tests
 - Run `npm test` with Node.js 22 or newer. There's nothing to install.
 - Covers the civ data and its icons, atlases and jingles, saved state, drawing and continuous freshness, share links and preset files.
+- The swipe tests draw, undo, re-roll and reset with a finger in the phone layout, in the same headless browser as the WCAG tests.
 - The WCAG tests check simple mode ([frcp.net/simple](https://frcp.net/simple)) against WCAG 2.2 at level AAA in a headless Chrome, Edge or Chromium, whichever the machine has (`CHROME_PATH` can point to one). They open every tab, menu and dialog at desktop, 200 % and 400 % zoom sizes, in dark mode and with WCAG's text spacing, and use the page with the keyboard and the mouse. Without a browser, or with `FRCP_NO_BROWSER` set, they skip. They use [axe-core](https://github.com/dequelabs/axe-core) 4.10.2, kept in `tests/vendor` under its own licence (MPL 2.0).
 - The compatibility tests also compare data.json with the [desktop version](https://github.com/cnordenb/Fresh-Random-Civ-Picker_GUI)'s when its repository sits next to this one, or at `FRCP_DESKTOP_DIR`.
 - GitHub Actions runs them on every push.

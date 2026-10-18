@@ -1465,7 +1465,7 @@ import { MersenneTwister, createLogic } from "./logic.js";
     }
     const snap = undoStacks.undo[undoStacks.undo.length - 1];
     if (!snap) return null;
-    const log = JSON.parse(snap);
+    const { log } = JSON.parse(snap);
     const r = log[log.length - 1];
     return iconCell(r.length ? r[r.length - 1][0] : null);
   }
