@@ -1,0 +1,988 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="color-scheme" content="light dark">
+<title>Civ Explorer (Fresh Random Civ Picker)</title>
+<meta name="description" content="Find the Age of Empires II civs that have, or lack, the buildings, units and techs you choose.">
+<!-- Civ Explorer (/civexplorer): the civs that have, or lack, the buildings, units and techs marked in a tree. Unlike
+     the rest of the site, it's one file, with its data, styles and script inline, and it has no images or sounds. It's built to
+     meet WCAG 2.2 at level AAA, as simple mode is: 16 px text with 1.5 line spacing and at least 7:1 contrast, 44 x 44 px
+     targets and a 3 px focus ring. -->
+<style>
+:root {
+  --bg: #fff;
+  --ink: #000;
+  --muted: #444;
+  --line: #767676;
+  --mark: #00478a;
+  --face: #f0f0f0;
+  --hover: #e5f3ff;
+  --found: #fff0a0;
+  --yes: #1a7f37;
+  --no: #c62828;
+  --target: 44px;
+  --ui: "Segoe UI", system-ui, -apple-system, Roboto, "Helvetica Neue", Arial, sans-serif;
+  color-scheme: light;
+}
+@media (prefers-color-scheme: dark) {
+  :root {
+    --bg: #15181c;
+    --ink: #fff;
+    --muted: #c9ced4;
+    --line: #8f969e;
+    --mark: #9ccaff;
+    --face: #23282e;
+    --hover: #233243;
+    --found: #3d3400;
+    --yes: #2ea043;
+    --no: #e5534b;
+    color-scheme: dark;
+  }
+}
+*, *::before, *::after { box-sizing: border-box; }
+[hidden] { display: none !important; }
+html { background: var(--bg); }
+body { margin: 0; padding: 16px; background: var(--bg); color: var(--ink); font: 16px/1.5 var(--ui); }
+a { color: var(--mark); }
+:focus-visible { outline: 3px solid var(--ink); outline-offset: 2px; }
+.sr-only {
+  position: absolute; width: 1px; height: 1px; margin: -1px; padding: 0; overflow: hidden; clip-path: inset(50%); white-space: nowrap; border: 0;
+}
+
+/* The site's name and the page's path after it, as in the address: frcp.net/civexplorer */
+.top { margin-bottom: 12px; }
+.title { display: flex; flex-wrap: wrap; align-items: center; }
+.site { margin: 0; font-weight: 700; }
+.site a { display: inline-flex; align-items: center; min-height: var(--target); }
+h1 { margin: 0; font-size: 1rem; line-height: 1.5; }
+
+/* Two panes: the tree, and the civs that fit what's marked in it. Side by side when there's room, else one above the
+   other. */
+.panes { display: grid; grid-template-columns: minmax(0, 1fr); gap: 16px; }
+@media (min-width: 720px) {
+  .panes { grid-template-columns: minmax(20rem, 2fr) minmax(16rem, 3fr); }
+}
+.pane { display: flex; flex-direction: column; min-width: 0; border: 1px solid var(--line); }
+.pane-head {
+  display: flex; flex-wrap: wrap; align-items: center; gap: 8px 16px; padding: 8px 12px; border-bottom: 1px solid var(--line);
+  background: var(--face);
+}
+.pane-head h2 { margin: 0 auto 0 0; font-size: 1.125rem; line-height: 1.25; }
+.pane-head p { margin: 0; }
+.tools { display: flex; flex-wrap: wrap; gap: 8px; }
+.tool {
+  min-width: var(--target); min-height: var(--target); padding: 8px 14px; border: 1px solid var(--line); border-radius: 4px;
+  background: var(--bg); color: var(--ink); font: inherit; line-height: 1.25; cursor: pointer;
+}
+.tool:hover { background: var(--hover); border-color: var(--mark); }
+.find { display: flex; flex-basis: 100%; flex-wrap: wrap; align-items: center; gap: 8px 12px; }
+.find input {
+  flex: 1 1 10rem; min-width: 0; height: var(--target); padding: 0 8px; border: 1px solid var(--line); border-radius: 4px;
+  background: var(--bg); color: var(--ink); font: inherit;
+}
+/* What a click and a right-click do, as nothing on the screen shows the right-click */
+.legend { display: flex; flex-basis: 100%; flex-wrap: wrap; gap: 4px 16px; }
+.legend > span { display: inline-flex; align-items: center; gap: 8px; }
+/* Text only screen readers read sits in its pane, rather than past the bottom of the page. */
+.scroll { position: relative; padding: 8px; }
+
+/* The tree, as in a file explorer: a branch opens and closes from the arrow before it, and a dotted line runs down
+   from the arrow to the branch's last item. Each row is 44 px tall, and the whole of it after the arrow is the item's
+   box. A long press can't select its text or open the phone's menu. */
+.tree, .tree ul { margin: 0; padding: 0; list-style: none; }
+.tree ul { margin-left: calc(var(--target) / 2); border-left: 1px dotted var(--line); }
+.row { display: flex; align-items: center; min-height: var(--target); }
+.twisty, .gap { position: relative; flex: none; width: var(--target); height: var(--target); }
+.twisty { padding: 0; border: 0; border-radius: 4px; background: none; color: var(--ink); cursor: pointer; }
+.twisty:hover { background: var(--hover); }
+.twisty::before {
+  content: ""; position: absolute; left: 50%; top: 50%; width: 9px; height: 9px; border: solid currentColor; border-width: 0 2px 2px 0;
+  transform: translate(-75%, -50%) rotate(-45deg);
+}
+.twisty[aria-expanded="true"]::before { transform: translate(-50%, -75%) rotate(45deg); }
+.node {
+  display: flex; flex: 1; align-items: center; gap: 10px; min-width: 0; min-height: var(--target); padding: 0 8px; border-radius: 4px;
+  cursor: pointer; -webkit-user-select: none; user-select: none; -webkit-touch-callout: none;
+}
+.node:is(:hover, .pressed) { background: var(--hover); }
+/* What Find matches has a bar down its left side, as well as its colour. */
+.node.found { background: var(--found); box-shadow: inset 4px 0 0 var(--mark); }
+.node .name { min-width: 0; overflow-wrap: anywhere; }
+/* A box is empty, a green tick for must have, a red cross for must lack, or a bar for a branch that is partly marked.
+   The tick and the cross differ in shape as well as colour. */
+.box { position: relative; flex: none; width: 20px; height: 20px; border: 2px solid var(--line); border-radius: 3px; background: var(--bg); }
+.box::before, .box::after { content: ""; position: absolute; left: 50%; top: 50%; }
+[data-state="has"] > .box { border-color: var(--yes); background: var(--yes); }
+[data-state="lacks"] > .box { border-color: var(--no); background: var(--no); }
+[data-state="mixed"] > .box { border-color: var(--ink); }
+[data-state="has"] > .box::after {
+  width: 6px; height: 11px; border: solid #fff; border-width: 0 2.5px 2.5px 0; transform: translate(-50%, -60%) rotate(45deg);
+}
+[data-state="lacks"] > .box::before, [data-state="lacks"] > .box::after {
+  width: 0; height: 13px; border-left: 2.5px solid #fff; transform: translate(-50%, -50%) rotate(45deg);
+}
+[data-state="lacks"] > .box::after { transform: translate(-50%, -50%) rotate(-45deg); }
+[data-state="mixed"] > .box::after { width: 10px; height: 0; border-top: 2.5px solid var(--ink); transform: translate(-50%, -50%); }
+/* Windows high contrast and other forced colours: the boxes in the system's colours */
+@media (forced-colors: active) {
+  .box { forced-color-adjust: none; border-color: CanvasText; background: Canvas; }
+  :is([data-state="has"], [data-state="lacks"]) > .box { border-color: Highlight; background: Highlight; }
+  [data-state] > .box::before, [data-state] > .box::after { border-color: HighlightText; }
+  [data-state="mixed"] > .box::after { border-color: CanvasText; }
+}
+/* The names at the top of the tree and of groups are bold, and so is an item's that is marked itself, as a partly
+   marked box can't show that. */
+.tree > li > .row .name, .node:is(.group, .self) .name { font-weight: 700; }
+.node .n { margin-left: auto; padding-left: 8px; color: var(--muted); font-variant-numeric: tabular-nums; }
+:is(.twisty, .node):focus-visible { outline: 3px solid var(--ink); outline-offset: -3px; }
+
+/* The civ list, in columns, under the filters. Each filter is a button that clears it. */
+.ticked { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; padding: 4px 4px 12px; margin-bottom: 4px; border-bottom: 1px solid var(--line); }
+.ticked ul { display: contents; list-style: none; }
+.chip {
+  display: inline-flex; align-items: center; gap: 8px; min-height: var(--target); padding: 6px 14px; border: 1px solid var(--mark);
+  border-radius: 22px; background: var(--hover); color: var(--ink); font: inherit; line-height: 1.25; text-align: left; cursor: pointer;
+}
+.chip:hover { border-width: 2px; padding: 5px 13px; }
+.civs { margin: 0; padding: 4px; list-style: none; columns: 11rem; column-gap: 16px; }
+.civs li { padding: 2px 0; break-inside: avoid; }
+.none { margin: 0; padding: 4px; }
+/* The footer, under the panes at the bottom of the page */
+.foot p { margin: 8px 0 0; color: var(--muted); }
+
+/* A screen 500 px tall or more holds the whole page: the panes fill it, and each scrolls on its own. A shorter one,
+   such as one zoomed to 300 % or more, scrolls the page as a whole, as panes that small would show too little. */
+@media (min-height: 500px) {
+  html, body { height: 100%; overflow: hidden; overscroll-behavior: none; }
+  body { display: flex; flex-direction: column; }
+  .top, .foot { flex: none; }
+  .panes { flex: 1; min-height: 0; grid-template-rows: minmax(0, 1fr); }
+  .pane { min-height: 0; }
+  .scroll { flex: 1; min-height: 0; overflow-y: auto; overscroll-behavior: contain; scroll-padding: 8px; }
+}
+@media (min-height: 500px) and (max-width: 719px) {
+  .panes { grid-template-rows: minmax(0, 3fr) minmax(0, 2fr); gap: 12px; }
+}
+@media (max-width: 400px) {
+  body { padding: 8px; }
+  .scroll { padding: 4px; }
+}
+</style>
+</head>
+<body>
+<header class="top">
+  <div class="title"><p class="site"><a href="../">frcp.net</a></p><h1>/civexplorer</h1></div>
+</header>
+<noscript><p>Civ Explorer needs JavaScript.</p></noscript>
+<main class="panes">
+  <section class="pane" aria-labelledby="treeTitle">
+    <div class="pane-head">
+      <h2 id="treeTitle">Buildings, units and <abbr title="technologies">techs</abbr></h2>
+      <div class="tools">
+        <button type="button" class="tool" id="clear">Clear</button>
+        <button type="button" class="tool" id="expandAll">Expand all</button>
+        <button type="button" class="tool" id="collapseAll">Collapse all</button>
+      </div>
+      <div class="find">
+        <label for="find">Find</label>
+        <input type="search" id="find" autocomplete="off" spellcheck="false">
+        <p id="found" role="status"></p>
+      </div>
+      <p class="legend">
+        <span data-state="has"><span class="box" aria-hidden="true"></span>Must have: click or Space.</span>
+        <span data-state="lacks"><span class="box" aria-hidden="true"></span>Must lack: right-click, long press or X.</span>
+      </p>
+    </div>
+    <div class="scroll"><ul class="tree" id="tree" role="list"></ul></div>
+  </section>
+  <section class="pane" aria-labelledby="civTitle">
+    <div class="pane-head">
+      <h2 id="civTitle" tabindex="-1"><abbr title="civilisations">Civs</abbr></h2>
+      <p id="count" role="status"></p>
+    </div>
+    <div class="scroll">
+      <div class="ticked" id="ticked" hidden>
+        <span id="tickedLabel">Filters:</span><ul role="list" aria-labelledby="tickedLabel" id="chips"></ul>
+      </div>
+      <ul class="civs" id="civs" role="list"></ul>
+      <p class="none" id="none" hidden></p>
+    </div>
+  </section>
+</main>
+<footer class="foot"><p>Data from <a href="https://aoe2techtree.net/">aoe2techtree.net</a>, October 2026.</p></footer>
+<script>
+"use strict";
+(() => {
+  // ---- Data, from aoe2techtree.net's civ trees ----
+  // Each line of TREE is a building, unit or tech, indented two spaces under its parent, then what it is, "unique" or
+  // "regional" first for one the game calls so, such as the Camel Rider, and the civs that have it: "all", "has" and
+  // the civs that do, or "lacks" and the civs that don't. Unique units and techs sit in their building's Unique Units
+  // and Unique Technologies groups. A line with only a name, such as Economy or
+  // Shock Infantry, is a group, which a civ needs nothing to have. Units and buildings come before techs. A building or
+  // tech that some civs' trees draw in a different place, such as the Monk, which Armenians and Georgians train at a
+  // Fortified Church, sits where most civs have it, and counts for every civ that has it anywhere.
+  // DATA START
+  const CIVS = "Armenians, Aztecs, Bengalis, Berbers, Bohemians, Britons, Bulgarians, Burgundians, Burmese, Byzantines, Celts, Chinese, Cumans, Danes, Dravidians, Ethiopians, Franks, Georgians, Goths, Gurjaras, Hindustanis, Huns, Incas, Italians, Japanese, Jurchens, Khitans, Khmer, Koreans, Lithuanians, Magyars, Malay, Malians, Mapuche, Mayans, Mongols, Muisca, Persians, Poles, Portuguese, Romans, Saracens, Saxons, Shu, Sicilians, Slavs, Spanish, Tatars, Teutons, Tupi, Turks, Varangians, Vietnamese, Vikings, Wei, Wu".split(", ");
+  const TREE = `
+Economy
+  Town Center | building | all
+    Villager | unit | all
+    Feudal Age | tech | all
+      Castle Age | tech | all
+        Imperial Age | tech | all
+    Loom | tech | all
+    Town Watch | tech | all
+      Town Patrol | tech | all
+    Wheelbarrow | tech | all
+      Hand Cart | tech | all
+  House | building | lacks Huns
+  Drop-off Sites
+    Mill | building | lacks Incas, Mapuche, Muisca, Poles, Tupi
+      Horse Collar | tech | lacks Khitans
+        Heavy Plow | tech | lacks Khitans
+          Crop Rotation | tech | lacks Armenians, Bohemians, Britons, Celts, Chinese, Danes, Dravidians, Ethiopians, Hindustanis, Huns, Japanese, Khitans, Koreans, Mongols, Saracens, Shu, Spanish, Tupi, Turks, Wu
+    Lumber Camp | building | lacks Armenians, Georgians, Incas, Mapuche, Muisca, Tupi
+      Double-Bit Axe | tech | all
+        Bow Saw | tech | all
+          Two-Man Saw | tech | lacks Armenians, Aztecs, Berbers, Bulgarians, Celts, Danes, Franks, Georgians, Gurjaras, Incas, Khmer, Malay, Malians, Mapuche, Mongols, Poles, Romans, Sicilians, Tatars, Wei
+    Mining Camp | building | lacks Armenians, Georgians, Incas, Mapuche, Muisca, Tupi
+      Gold Mining | tech | all
+        Gold Shaft Mining | tech | lacks Dravidians, Georgians, Goths, Italians, Khitans, Lithuanians, Mayans, Poles, Portuguese, Spanish, Teutons, Varangians, Vietnamese
+      Stone Mining | tech | all
+        Stone Shaft Mining | tech | lacks Armenians, Bengalis, Britons, Burmese, Cumans, Dravidians, Franks, Huns, Japanese, Magyars, Romans, Saracens, Saxons, Shu, Slavs, Tatars, Tupi, Turks, Vikings
+  Farm | building | lacks Khitans
+  Mule Cart | regional building | has Armenians, Georgians
+  Settlement | regional building | has Incas, Mapuche, Muisca, Tupi
+  Market | building | all
+    Trade Cart | unit | all
+    Caravan | tech | all
+    Coinage | tech | all
+      Banking | tech | all
+    Guilds | tech | lacks Aztecs, Chinese, Danes, Franks, Gurjaras, Hindustanis, Khmer, Magyars, Malay, Mapuche, Mongols, Poles, Saracens, Slavs, Tupi, Vikings, Wei
+  Caravanserai | regional building | has Hindustanis, Persians
+  Dock | building | all
+    Fishing Ship | unit | all
+      Fish Trap | building | all
+    Transport Ship | unit | all
+    Fire Galley | unit | all
+      Fire Ship | unit | all
+        Fast Fire Ship | unit | lacks Armenians, Bohemians, Bulgarians, Burmese, Celts, Chinese, Ethiopians, Gurjaras, Hindustanis, Huns, Jurchens, Muisca, Portuguese, Saracens, Saxons, Shu, Turks, Vietnamese, Vikings
+    Galley | unit | all
+      War Galley | unit | all
+        Galleon | unit | lacks Aztecs, Khitans, Malians
+    Hulk | unit | all
+      War Hulk | unit | all
+        Carrack | unit | lacks Britons, Danes, Georgians, Huns, Lithuanians, Mongols, Romans, Tupi
+    Demolition Raft | unit | lacks Danes, Koreans, Portuguese, Saxons, Varangians, Vikings
+      Demolition Ship | unit | lacks Danes, Koreans, Portuguese, Saxons, Varangians, Vikings
+        Heavy Demolition Ship | unit | has Armenians, Berbers, Britons, Byzantines, Celts, Chinese, Dravidians, Franks, Goths, Gurjaras, Huns, Jurchens, Malians, Mayans, Mongols, Muisca, Persians, Saracens, Shu, Sicilians, Spanish, Teutons, Turks, Vietnamese, Wu
+    Trade Cog | unit | all
+    Longship | regional unit | has Danes, Saxons, Varangians, Vikings
+      Elite Longship | regional unit | has Danes, Saxons, Varangians, Vikings
+    Cannon Galleon | unit | lacks Armenians, Aztecs, Byzantines, Chinese, Cumans, Danes, Goths, Huns, Incas, Jurchens, Mapuche, Mayans, Muisca, Romans, Saxons, Shu, Tupi, Varangians, Vikings, Wei, Wu
+      Elite Cannon Galleon | unit | has Bengalis, Berbers, Bohemians, Burgundians, Burmese, Dravidians, Hindustanis, Italians, Japanese, Khmer, Koreans, Lithuanians, Malay, Persians, Portuguese, Saracens, Spanish, Tatars, Turks, Vietnamese
+    Dromon | regional unit | has Armenians, Byzantines, Goths, Huns, Romans
+    Catapult Galleon | regional unit | has Aztecs, Cumans, Danes, Incas, Mapuche, Mayans, Muisca, Saxons, Tupi, Varangians, Vikings
+    Lou Chuan | regional unit | has Chinese, Jurchens, Shu, Wei, Wu
+    Unique Units
+      Caravel | unique unit | has Portuguese
+        Elite Caravel | unique unit | has Portuguese
+      Dragon Ship | unique unit | has Chinese
+      Thirisadai | unique unit | has Dravidians
+      Turtle Ship | unique unit | has Koreans
+        Elite Turtle Ship | unique unit | has Koreans
+    Fishing Lines | tech | all
+      Gillnets | tech | all
+    Warships | tech | all
+      Heavy Warships | tech | all
+  Monastery | building | lacks Armenians, Georgians
+    Monk | unit | all
+    Unique Units
+      Missionary | unique unit | has Spanish
+    Devotion | tech | all
+      Faith | tech | lacks Bulgarians, Danes, Gurjaras, Jurchens, Magyars, Tatars
+    Redemption | tech | lacks Britons, Celts, Chinese, Cumans, Dravidians, Ethiopians, Franks, Goths, Huns, Jurchens, Khitans, Koreans, Magyars, Mapuche, Mayans, Mongols, Persians, Portuguese, Shu, Sicilians, Tatars, Varangians, Vietnamese, Vikings, Wei
+    Atonement | tech | lacks Britons, Bulgarians, Celts, Danes, Franks, Georgians, Goths, Hindustanis, Incas, Khmer, Koreans, Magyars, Persians, Poles, Sicilians, Tupi, Wei
+    Herbal Medicine | tech | lacks Byzantines, Danes, Huns, Khitans, Shu, Turks, Vikings, Wei
+    Heresy | tech | lacks Bengalis, Britons, Burgundians, Burmese, Chinese, Danes, Dravidians, Goths, Hindustanis, Italians, Japanese, Jurchens, Khmer, Koreans, Persians, Poles, Romans, Sicilians, Slavs, Tatars, Varangians, Vietnamese, Wei, Wu
+    Sanctity | tech | lacks Berbers, Bulgarians, Mongols, Persians, Romans, Shu, Tatars, Varangians, Vikings
+    Fervor | tech | lacks Dravidians, Incas, Malay, Mapuche, Saxons, Slavs, Tupi, Vietnamese
+    Illumination | tech | lacks Celts, Cumans, Dravidians, Georgians, Koreans, Malians, Mapuche, Mayans, Mongols, Persians, Poles, Portuguese, Turks, Vikings
+    Block Printing | tech | lacks Berbers, Bulgarians, Celts, Cumans, Ethiopians, Goths, Gurjaras, Huns, Khitans, Khmer, Mapuche, Mongols, Shu, Sicilians, Tupi, Turks, Varangians, Wu
+    Theocracy | tech | lacks Burgundians, Celts, Cumans, Huns, Malay, Mongols, Romans, Sicilians, Tatars, Vikings
+  Fortified Church | regional building | has Armenians, Georgians
+    Unique Units
+      Warrior Priest | unique unit | has Armenians
+  Wonder | building | all
+  Unique Buildings
+    Feitoria | unique building | has Portuguese
+    Folwark | unique building | has Poles
+    Harbor | unique building | has Malay
+Military
+  Barracks | building | all
+    General Infantry
+      Militia | unit | lacks Incas, Mapuche, Muisca, Tupi
+        Man-at-Arms | unit | lacks Incas, Mapuche, Muisca, Tupi
+          Long Swordsman | unit | lacks Incas, Jurchens, Mapuche, Muisca, Tupi
+            Two-Handed Swordsman | unit | lacks Incas, Jurchens, Mapuche, Muisca, Persians, Romans, Tupi
+              Champion | unit | lacks Bulgarians, Ethiopians, Gurjaras, Huns, Incas, Jurchens, Khmer, Malay, Mapuche, Mayans, Muisca, Persians, Romans, Tatars, Tupi, Varangians, Wei
+      Champi Scout | regional unit | has Incas, Mapuche, Muisca, Tupi
+        Champi Runner | regional unit | has Incas, Mapuche, Muisca, Tupi
+          Champi Warrior | regional unit | has Incas, Mapuche, Muisca, Tupi
+            Elite Champi Warrior | regional unit | has Incas, Mapuche, Muisca, Tupi
+    Spearman | unit | all
+      Pikeman | unit | lacks Gurjaras, Turks
+        Halberdier | unit | lacks Aztecs, Berbers, Gurjaras, Hindustanis, Italians, Khitans, Malians, Mongols, Muisca, Poles, Saracens, Turks, Vikings
+    Shock Infantry
+      Eagle Scout | regional unit | has Aztecs, Mayans
+        Eagle Warrior | regional unit | has Aztecs, Mayans
+          Elite Eagle Warrior | regional unit | has Aztecs, Mayans
+      Varangian Guard | regional unit | has Byzantines, Danes, Saxons, Varangians, Vikings
+        Elite Varangian Guard | regional unit | has Byzantines, Danes, Saxons, Varangians, Vikings
+      Fire Lancer | regional unit | has Chinese, Jurchens, Khitans, Koreans, Vietnamese
+        Elite Fire Lancer | regional unit | has Chinese, Jurchens, Khitans, Koreans, Vietnamese
+    Unique Units
+      Condottiero | unique unit | has Italians
+      Flemish Militia | unique unit | has Burgundians
+      Ibirapema Warrior | unique unit | has Tupi
+        Elite Ibirapema Warrior | unique unit | has Tupi
+      Jian Swordsman | unique unit | has Wu
+      Legionary | unique unit | has Romans
+      Temple Guard | unique unit | has Muisca
+        Elite Temple Guard | unique unit | has Muisca
+    Arson | tech | lacks Goths, Muisca, Romans
+    Gambesons | tech | has Armenians, Aztecs, Bengalis, Britons, Bulgarians, Burmese, Byzantines, Celts, Danes, Dravidians, Franks, Georgians, Japanese, Jurchens, Khitans, Persians, Portuguese, Saracens, Saxons, Shu, Sicilians, Slavs, Spanish, Teutons, Varangians
+    Squires | tech | lacks Celts, Gurjaras, Khmer, Magyars, Mapuche, Portuguese
+  Archery Range | building | all
+    Archer | unit | all
+      Crossbowman | unit | lacks Bulgarians, Spanish
+        Arbalester | unit | lacks Berbers, Bulgarians, Burgundians, Burmese, Celts, Cumans, Danes, Franks, Georgians, Goths, Gurjaras, Hindustanis, Huns, Jurchens, Khitans, Lithuanians, Mapuche, Persians, Romans, Slavs, Spanish, Tatars, Teutons, Turks, Varangians, Wei
+    Skirmisher | unit | all
+      Elite Skirmisher | unit | lacks Turks
+    Cavalry Archer | unit | lacks Aztecs, Bengalis, Bohemians, Britons, Burgundians, Celts, Danes, Dravidians, Franks, Gurjaras, Incas, Italians, Mapuche, Mayans, Muisca, Poles, Portuguese, Saxons, Sicilians, Spanish, Teutons, Tupi, Varangians, Vikings, Wei
+      Heavy Cavalry Archer | unit | has Berbers, Bulgarians, Burmese, Byzantines, Cumans, Ethiopians, Georgians, Goths, Hindustanis, Huns, Japanese, Jurchens, Khitans, Khmer, Koreans, Lithuanians, Magyars, Malians, Mongols, Persians, Romans, Saracens, Shu, Slavs, Tatars, Turks, Vietnamese
+    Elephant Archer | regional unit | has Bengalis, Dravidians, Gurjaras
+      Elite Elephant Archer | regional unit | has Bengalis, Dravidians, Gurjaras
+    Mounted Crossbowman | regional unit | has Bohemians, Britons, Burgundians, Celts, Danes, Franks, Italians, Poles, Portuguese, Saxons, Sicilians, Spanish, Teutons, Varangians, Vikings
+      Heavy Mounted Crossbowman | regional unit | has Britons, Celts, Danes, Franks, Poles, Saxons, Sicilians, Spanish, Teutons, Varangians
+    Slinger | regional unit | has Incas, Mapuche, Muisca, Tupi
+    Hand Cannoneer | unit | has Berbers, Bohemians, Burgundians, Byzantines, Dravidians, Franks, Georgians, Goths, Gurjaras, Hindustanis, Italians, Japanese, Khmer, Koreans, Lithuanians, Malians, Persians, Portuguese, Saracens, Spanish, Tatars, Teutons, Turks
+    Unique Units
+      Bolas Rider | unique unit | has Mapuche
+        Elite Bolas Rider | unique unit | has Mapuche
+      Genitour | unique unit | has Berbers
+        Elite Genitour | unique unit | has Berbers
+      Grenadier | unique unit | has Jurchens
+      Imperial Skirmisher | unique unit | has Vietnamese
+      Xianbei Raider | unique unit | has Wei
+    Thumb Ring | tech | lacks Armenians, Aztecs, Bengalis, Bohemians, Britons, Burgundians, Burmese, Celts, Franks, Georgians, Goths, Jurchens, Khmer, Mapuche, Romans, Sicilians, Slavs, Teutons, Tupi, Varangians, Vikings, Wu
+    Parthian Tactics | tech | has Bulgarians, Burmese, Cumans, Georgians, Huns, Japanese, Khitans, Khmer, Magyars, Mongols, Persians, Saracens, Tatars, Turks, Wei
+    Cranequins | regional tech | has Britons, Danes, Franks, Saxons, Sicilians, Varangians
+  Stable | building | lacks Aztecs, Incas, Mapuche, Mayans, Muisca, Tupi
+    Scout Cavalry | unit | lacks Aztecs, Incas, Mapuche, Mayans, Muisca, Tupi
+      Light Cavalry | unit | lacks Aztecs, Incas, Mapuche, Mayans, Muisca, Teutons, Tupi
+        Hussar | unit | lacks Armenians, Aztecs, Bengalis, Bohemians, Britons, Chinese, Danes, Dravidians, Franks, Incas, Japanese, Lithuanians, Malay, Malians, Mapuche, Mayans, Muisca, Poles, Portuguese, Romans, Shu, Sicilians, Teutons, Tupi, Vietnamese, Vikings
+    Knight | unit | lacks Aztecs, Bengalis, Dravidians, Gurjaras, Hindustanis, Incas, Jurchens, Khitans, Mapuche, Mayans, Muisca, Shu, Tupi, Wei, Wu
+      Cavalier | unit | lacks Aztecs, Bengalis, Danes, Dravidians, Gurjaras, Hindustanis, Incas, Jurchens, Khitans, Mapuche, Mayans, Muisca, Saracens, Shu, Tupi, Wei, Wu
+        Paladin | unit | has Burgundians, Byzantines, Celts, Cumans, Franks, Huns, Lithuanians, Magyars, Spanish, Teutons
+    Camel Rider | regional unit | has Berbers, Byzantines, Cumans, Ethiopians, Gurjaras, Hindustanis, Khitans, Malians, Mongols, Persians, Saracens, Tatars, Turks
+      Heavy Camel Rider | regional unit | has Berbers, Byzantines, Ethiopians, Gurjaras, Hindustanis, Khitans, Malians, Mongols, Persians, Saracens, Tatars, Turks
+    Battle Elephant | regional unit | has Bengalis, Burmese, Dravidians, Khmer, Malay, Vietnamese
+      Elite Battle Elephant | regional unit | has Bengalis, Burmese, Khmer, Malay, Vietnamese
+    Hei Guang Cavalry | regional unit | has Shu, Wei, Wu
+      Heavy Hei Guang Cavalry | regional unit | has Shu, Wei, Wu
+    Steppe Lancer | regional unit | has Cumans, Jurchens, Khitans, Mongols, Tatars
+      Elite Steppe Lancer | regional unit | has Cumans, Jurchens, Khitans, Mongols, Tatars
+    Unique Units
+      Camel Scout | unique unit | has Gurjaras
+      Imperial Camel Rider | unique unit | has Hindustanis
+      Savar | unique unit | has Persians
+      Shrivamsha Rider | unique unit | has Gurjaras
+        Elite Shrivamsha Rider | unique unit | has Gurjaras
+      Winged Hussar | unique unit | has Lithuanians, Poles
+    Bloodlines | tech | lacks Aztecs, Bohemians, Britons, Burgundians, Byzantines, Celts, Dravidians, Ethiopians, Franks, Incas, Khitans, Koreans, Malay, Mapuche, Mayans, Muisca, Shu, Tupi, Vikings
+    Husbandry | tech | lacks Aztecs, Cumans, Incas, Mapuche, Mayans, Muisca, Teutons, Tupi, Vikings
+  Siege Workshop | building | all
+    Battering Ram | unit | lacks Bengalis, Dravidians, Gurjaras, Hindustanis
+      Capped Ram | unit | lacks Bengalis, Dravidians, Gurjaras, Hindustanis, Wu
+        Siege Ram | unit | lacks Bengalis, Berbers, Bohemians, Britons, Burgundians, Burmese, Dravidians, Franks, Goths, Gurjaras, Hindustanis, Italians, Japanese, Koreans, Lithuanians, Magyars, Malay, Malians, Mapuche, Muisca, Portuguese, Teutons, Vietnamese, Wu
+    Mangonel | unit | lacks Chinese, Jurchens, Khitans, Koreans
+      Onager | unit | lacks Chinese, Huns, Jurchens, Khitans, Koreans, Turks
+        Siege Onager | unit | has Aztecs, Bulgarians, Celts, Cumans, Danes, Dravidians, Ethiopians, Georgians, Malians, Mongols, Muisca, Saracens, Sicilians, Slavs, Teutons
+    Armored Elephant | regional unit | has Bengalis, Dravidians, Gurjaras, Hindustanis
+      Siege Elephant | regional unit | has Bengalis, Dravidians, Gurjaras, Hindustanis
+    Scorpion | unit | lacks Shu
+      Heavy Scorpion | unit | lacks Aztecs, Burgundians, Byzantines, Cumans, Hindustanis, Huns, Italians, Khitans, Koreans, Lithuanians, Malians, Poles, Portuguese, Saracens, Shu, Spanish, Vietnamese
+    Rocket Cart | regional unit | has Chinese, Jurchens, Khitans, Koreans
+      Heavy Rocket Cart | regional unit | has Chinese, Jurchens, Khitans, Koreans
+    Siege Tower | unit | all
+    Bombard Cannon | unit | has Berbers, Bohemians, Burgundians, Burmese, Byzantines, Dravidians, Ethiopians, Franks, Goths, Gurjaras, Hindustanis, Italians, Jurchens, Koreans, Lithuanians, Malay, Malians, Persians, Poles, Portuguese, Saracens, Spanish, Teutons, Turks, Vietnamese
+    Traction Trebuchet | regional unit | has Shu, Wei, Wu
+    Unique Units
+      Flaming Camel | unique unit | has Tatars
+      Houfnice | unique unit | has Bohemians
+      Mounted Trebuchet | unique unit | has Khitans
+      War Chariot | unique unit | has Shu
+  Castle | building | all
+    Petard | unit | all
+    Trebuchet | unit | lacks Shu, Wei, Wu
+    Unique Units
+      Arambai | unique unit | has Burmese
+        Elite Arambai | unique unit | has Burmese
+      Ballista Elephant | unique unit | has Khmer
+        Elite Ballista Elephant | unique unit | has Khmer
+      Berserk | unique unit | has Vikings
+        Elite Berserk | unique unit | has Vikings
+      Blackwood Archer | unique unit | has Tupi
+        Elite Blackwood Archer | unique unit | has Tupi
+      Boyar | unique unit | has Slavs
+        Elite Boyar | unique unit | has Slavs
+      Camel Archer | unique unit | has Berbers
+        Elite Camel Archer | unique unit | has Berbers
+      Cao Cao | unique unit | has Wei
+      Cataphract | unique unit | has Byzantines
+        Elite Cataphract | unique unit | has Byzantines
+      Centurion | unique unit | has Romans
+        Elite Centurion | unique unit | has Romans
+      Chakram Thrower | unique unit | has Gurjaras
+        Elite Chakram Thrower | unique unit | has Gurjaras
+      Chu Ko Nu | unique unit | has Chinese
+        Elite Chu Ko Nu | unique unit | has Chinese
+      Composite Bowman | unique unit | has Armenians
+        Elite Composite Bowman | unique unit | has Armenians
+      Conquistador | unique unit | has Spanish
+        Elite Conquistador | unique unit | has Spanish
+      Coustillier | unique unit | has Burgundians
+        Elite Coustillier | unique unit | has Burgundians
+      Elite Kipchak | unique unit | has Cumans
+      Fire Archer | unique unit | has Wu
+        Elite Fire Archer | unique unit | has Wu
+      Gbeto | unique unit | has Malians
+        Elite Gbeto | unique unit | has Malians
+      Genoese Crossbowman | unique unit | has Italians
+        Elite Genoese Crossbowman | unique unit | has Italians
+      Ghulam | unique unit | has Hindustanis
+        Elite Ghulam | unique unit | has Hindustanis
+      Guecha Warrior | unique unit | has Muisca
+        Elite Guecha Warrior | unique unit | has Muisca
+      Hearth Troop | unique unit | has Saxons
+        Elite Hearth Troop | unique unit | has Saxons
+      Huskarl | unique unit | has Goths
+        Elite Huskarl | unique unit | has Goths
+      Hussite Wagon | unique unit | has Bohemians
+        Elite Hussite Wagon | unique unit | has Bohemians
+      Iron Pagoda | unique unit | has Jurchens
+        Elite Iron Pagoda | unique unit | has Jurchens
+      Jaguar Warrior | unique unit | has Aztecs
+        Elite Jaguar Warrior | unique unit | has Aztecs
+      Janissary | unique unit | has Turks
+        Elite Janissary | unique unit | has Turks
+      Jarl | unique unit | has Varangians
+        Elite Jarl | unique unit | has Varangians
+      Jomsviking | unique unit | has Danes
+        Elite Jomsviking | unique unit | has Danes
+      Kamayuk | unique unit | has Incas
+        Elite Kamayuk | unique unit | has Incas
+      Karambit Warrior | unique unit | has Malay
+        Elite Karambit Warrior | unique unit | has Malay
+      Keshik | unique unit | has Tatars
+        Elite Keshik | unique unit | has Tatars
+      Kipchak | unique unit | has Cumans
+      Kona | unique unit | has Mapuche
+        Elite Kona | unique unit | has Mapuche
+      Konnik | unique unit | has Bulgarians
+        Elite Konnik | unique unit | has Bulgarians
+      Leitis | unique unit | has Lithuanians
+        Elite Leitis | unique unit | has Lithuanians
+      Liao Dao | unique unit | has Khitans
+        Elite Liao Dao | unique unit | has Khitans
+      Liu Bei | unique unit | has Shu
+      Longbowman | unique unit | has Britons
+        Elite Longbowman | unique unit | has Britons
+      Magyar Huszar | unique unit | has Magyars
+        Elite Magyar Huszar | unique unit | has Magyars
+      Mameluke | unique unit | has Saracens
+        Elite Mameluke | unique unit | has Saracens
+      Mangudai | unique unit | has Mongols
+        Elite Mangudai | unique unit | has Mongols
+      Monaspa | unique unit | has Georgians
+        Elite Monaspa | unique unit | has Georgians
+      Obuch | unique unit | has Poles
+        Elite Obuch | unique unit | has Poles
+      Organ Gun | unique unit | has Portuguese
+        Elite Organ Gun | unique unit | has Portuguese
+      Plumed Archer | unique unit | has Mayans
+        Elite Plumed Archer | unique unit | has Mayans
+      Ratha | unique unit | has Bengalis
+        Elite Ratha | unique unit | has Bengalis
+      Rattan Archer | unique unit | has Vietnamese
+        Elite Rattan Archer | unique unit | has Vietnamese
+      Samurai | unique unit | has Japanese
+        Elite Samurai | unique unit | has Japanese
+      Serjeant | unique unit | has Sicilians
+        Elite Serjeant | unique unit | has Sicilians
+      Shotel Warrior | unique unit | has Ethiopians
+        Elite Shotel Warrior | unique unit | has Ethiopians
+      Sun Jian | unique unit | has Wu
+      Tarkan | unique unit | has Huns
+        Elite Tarkan | unique unit | has Huns
+      Teutonic Knight | unique unit | has Teutons
+        Elite Teutonic Knight | unique unit | has Teutons
+      Throwing Axeman | unique unit | has Franks
+        Elite Throwing Axeman | unique unit | has Franks
+      Tiger Cavalry | unique unit | has Wei
+        Elite Tiger Cavalry | unique unit | has Wei
+      Urumi Swordsman | unique unit | has Dravidians
+        Elite Urumi Swordsman | unique unit | has Dravidians
+      War Elephant | unique unit | has Persians
+        Elite War Elephant | unique unit | has Persians
+      War Wagon | unique unit | has Koreans
+        Elite War Wagon | unique unit | has Koreans
+      White Feather Guard | unique unit | has Shu
+        Elite White Feather Guard | unique unit | has Shu
+      Woad Raider | unique unit | has Celts
+        Elite Woad Raider | unique unit | has Celts
+    Hoardings | tech | lacks Aztecs, Bengalis, Bohemians, Bulgarians, Burmese, Chinese, Ethiopians, Goths, Huns, Khitans, Koreans, Malay, Portuguese, Romans, Tatars, Varangians, Wu
+    Conscription | tech | all
+    Sappers | tech | lacks Bengalis, Berbers, Burmese, Byzantines, Danes, Dravidians, Gurjaras, Hindustanis, Italians, Japanese, Khitans, Koreans, Lithuanians, Muisca, Varangians, Wei, Wu
+    Spies/Treason | tech | all
+    Unique Technologies
+      Anarchy | unique tech | has Goths
+      Andean Sling | unique tech | has Incas
+      Arquebus | unique tech | has Portuguese
+      Artillery | unique tech | has Turks
+      Atheism | unique tech | has Huns
+      Atlatl | unique tech | has Aztecs
+      Aznauri Cavalry | unique tech | has Georgians
+      Bagains | unique tech | has Bulgarians
+      Ballistas | unique tech | has Romans
+      Bimaristan | unique tech | has Saracens
+      Bogsveigar | unique tech | has Vikings
+      Bolt Magazine | unique tech | has Shu
+      Burgundian Vineyards | unique tech | has Burgundians
+      Butalmapu | unique tech | has Mapuche
+      Caciques | unique tech | has Tupi
+      Chatras | unique tech | has Vietnamese
+      Chieftains | unique tech | has Vikings
+      Chivalry | unique tech | has Franks
+      Cilician Fleet | unique tech | has Armenians
+      Circumnavigation | unique tech | has Portuguese
+      Citadels | unique tech | has Persians
+      Clerical Recruitment | unique tech | has Saxons
+      Coiled Serpent Array | unique tech | has Shu
+      Comitatenses | unique tech | has Romans
+      Corvinian Army | unique tech | has Magyars
+      Counterweights | unique tech | has Saracens
+      Crenellations | unique tech | has Teutons
+      Cuman Mercenaries | unique tech | has Cumans
+      Curare | unique tech | has Tupi
+      Detinets | unique tech | has Slavs
+      Double Crossbow | unique tech | has Khmer
+      Drill | unique tech | has Mongols
+      Druzhina | unique tech | has Slavs
+      Eupseong | unique tech | has Koreans
+      Fabric Shields | unique tech | has Incas
+      Farimba | unique tech | has Malians
+      Fereters | unique tech | has Armenians
+      First Crusade | unique tech | has Sicilians
+      Flemish Revolution | unique tech | has Burgundians
+      Forced Levy | unique tech | has Malay
+      Fortified Bastions | unique tech | has Jurchens
+      Frontier Guards | unique tech | has Gurjaras
+      Furor Celtica | unique tech | has Celts
+      Garland Wars | unique tech | has Aztecs
+      Gothikon | unique tech | has Varangians
+      Grand Trunk Road | unique tech | has Hindustanis
+      Great Wall | unique tech | has Chinese
+      Greek Fire | unique tech | has Byzantines
+      Hamask | unique tech | has Danes
+      Hauberk | unique tech | has Sicilians
+      Herbalism | unique tech | has Muisca
+      Hill Forts | unique tech | has Lithuanians
+      Holcans | unique tech | has Mayans
+      Howdah | unique tech | has Burmese
+      Huaracas | unique tech | has Muisca
+      Hul'che Javelineers | unique tech | has Mayans
+      Hussite Reforms | unique tech | has Bohemians
+      Inquisition | unique tech | has Spanish
+      Ironclad | unique tech | has Teutons
+      Kamandaran | unique tech | has Persians
+      Kasbah | unique tech | has Berbers
+      Kataparuto | unique tech | has Japanese
+      Kshatriyas | unique tech | has Gurjaras
+      Lamellar Armor | unique tech | has Khitans
+      Lechitic Legacy | unique tech | has Poles
+      Logistica | unique tech | has Byzantines
+      Maghrebi Camels | unique tech | has Berbers
+      Mahayana | unique tech | has Bengalis
+      Malon | unique tech | has Mapuche
+      Manipur Cavalry | unique tech | has Burmese
+      Marauders | unique tech | has Huns
+      Medical Corps | unique tech | has Dravidians
+      Ming-Kuang Armor | unique tech | has Wei
+      Nomads | unique tech | has Mongols
+      Northmen's Fury | unique tech | has Danes
+      Ordo Cavalry | unique tech | has Khitans
+      Ordonnance Companies | unique tech | has Franks
+      Paiks | unique tech | has Bengalis
+      Paper Money | unique tech | has Vietnamese
+      Perfusion | unique tech | has Goths
+      Pirotechnia | unique tech | has Italians
+      Recurve Bow | unique tech | has Magyars
+      Red Cliff Tactics | unique tech | has Wu
+      Rocketry | unique tech | has Chinese
+      Royal Heirs | unique tech | has Ethiopians
+      Shatagni | unique tech | has Hindustanis
+      Shield Wall | unique tech | has Saxons
+      Shinkichon | unique tech | has Koreans
+      Silk Armor | unique tech | has Tatars
+      Silk Road | unique tech | has Italians
+      Sipahi | unique tech | has Turks
+      Sitting Tiger | unique tech | has Wu
+      Steppe Husbandry | unique tech | has Cumans
+      Stirrups | unique tech | has Bulgarians
+      Stronghold | unique tech | has Celts
+      Supremacy | unique tech | has Spanish
+      Svan Towers | unique tech | has Georgians
+      Szlachta Privileges | unique tech | has Poles
+      Thalassocracy | unique tech | has Malay
+      Thunderclap Bombs | unique tech | has Jurchens
+      Tigui | unique tech | has Malians
+      Timurid Siegecraft | unique tech | has Tatars
+      Torsion Engines | unique tech | has Ethiopians
+      Tower Shields | unique tech | has Lithuanians
+      Tuntian | unique tech | has Wei
+      Tusk Swords | unique tech | has Khmer
+      Vendel Legacy | unique tech | has Varangians
+      Wagenburg Tactics | unique tech | has Bohemians
+      Warwolf | unique tech | has Britons
+      Wootz Steel | unique tech | has Dravidians
+      Yasama | unique tech | has Japanese
+      Yeomen | unique tech | has Britons
+  Unique Buildings
+    Donjon | unique building | has Sicilians
+    Krepost | unique building | has Bulgarians
+Blacksmith | building | all
+  Padded Archer Armor | tech | all
+    Leather Archer Armor | tech | lacks Burmese
+      Ring Archer Armor | tech | lacks Aztecs, Bulgarians, Burgundians, Burmese, Franks, Georgians, Gurjaras, Huns, Mongols, Muisca, Poles, Sicilians, Wu
+  Fletching | tech | all
+    Bodkin Arrow | tech | all
+      Bracer | tech | lacks Celts, Cumans, Franks, Malians, Mapuche, Persians, Romans, Slavs, Teutons
+  Forging | tech | all
+    Iron Casting | tech | lacks Shu
+      Blast Furnace | tech | lacks Byzantines, Gurjaras, Khitans, Koreans, Lithuanians, Malians, Muisca, Saxons, Shu, Tupi, Vietnamese
+  Scale Barding Armor | tech | lacks Aztecs, Incas, Mapuche, Mayans, Muisca, Tupi
+    Chain Barding Armor | tech | lacks Aztecs, Incas, Malay, Mapuche, Mayans, Muisca, Tupi
+      Plate Barding Armor | tech | lacks Armenians, Aztecs, Bohemians, Celts, Dravidians, Ethiopians, Goths, Incas, Japanese, Koreans, Malay, Mapuche, Mayans, Mongols, Muisca, Poles, Saxons, Tupi, Vikings, Wei
+  Scale Mail Armor | tech | all
+    Chain Mail Armor | tech | lacks Tatars
+      Plate Mail Armor | tech | lacks Bengalis, Goths, Hindustanis, Huns, Jurchens, Khmer, Lithuanians, Magyars, Romans, Tatars, Wei
+University | building | all
+  Masonry | tech | lacks Aztecs, Byzantines, Tupi
+    Architecture | tech | lacks Armenians, Aztecs, Berbers, Byzantines, Celts, Cumans, Danes, Dravidians, Hindustanis, Huns, Incas, Japanese, Khitans, Magyars, Malay, Mongols, Muisca, Poles, Saracens, Sicilians, Slavs, Tatars, Teutons, Tupi, Vietnamese, Wei
+  Ballistics | tech | all
+  Heated Shot | tech | lacks Bohemians, Burgundians, Byzantines, Franks, Georgians, Hindustanis, Huns, Japanese, Jurchens, Mapuche, Mongols, Muisca, Poles, Romans, Saracens, Slavs, Spanish
+  Murder Holes | tech | all
+  Careening | tech | all
+    Dry Dock | tech | lacks Aztecs, Bohemians, Bulgarians, Burgundians, Cumans, Georgians, Goths, Gurjaras, Hindustanis, Jurchens, Khitans, Mapuche, Mayans, Mongols, Poles, Romans, Teutons, Wei
+  Clinker Construction | tech | lacks Saxons
+    Carvel Hull | tech | lacks Aztecs, Bohemians, Bulgarians, Chinese, Cumans, Ethiopians, Georgians, Incas, Magyars, Mayans, Muisca, Saxons, Tupi
+  Siphons | tech | lacks Aztecs, Bulgarians, Burmese, Celts, Cumans, Danes, Ethiopians, Georgians, Gurjaras, Hindustanis, Huns, Incas, Japanese, Khitans, Lithuanians, Magyars, Malians, Mayans, Muisca, Poles, Romans, Shu, Slavs, Tatars, Tupi, Vietnamese, Wei
+    Incendiaries | tech | has Armenians, Bohemians, Burgundians, Dravidians, Goths, Italians, Jurchens, Koreans, Persians, Saracens, Turks, Varangians
+  Treadmill Crane | tech | lacks Bengalis, Bohemians, Bulgarians, Celts, Chinese, Cumans, Danes, Dravidians, Ethiopians, Hindustanis, Huns, Khmer, Mongols, Persians, Romans, Saracens, Sicilians, Slavs, Spanish, Teutons
+  Chemistry | tech | all
+  Siege Engineers | tech | lacks Armenians, Burgundians, Byzantines, Chinese, Cumans, Dravidians, Goths, Gurjaras, Huns, Italians, Lithuanians, Malians, Mayans, Persians, Spanish, Tupi, Turks, Wei, Wu
+  Arrowslits | tech | lacks Armenians, Bulgarians, Burmese, Cumans, Ethiopians, Goths, Gurjaras, Hindustanis, Huns, Khitans, Khmer, Lithuanians, Magyars, Malay, Malians, Mayans, Mongols, Muisca, Persians, Portuguese, Romans, Slavs, Tatars, Varangians, Wei, Wu
+  Shipwright | tech | has Aztecs, Bengalis, Berbers, Britons, Byzantines, Celts, Chinese, Danes, Dravidians, Ethiopians, Goths, Gurjaras, Incas, Italians, Japanese, Koreans, Magyars, Malay, Mayans, Mongols, Romans, Saxons, Shu, Sicilians, Spanish, Turks, Varangians
+Fortifications
+  Palisade Wall | building | all
+  Palisade Gate | building | all
+  Stone Wall | building | lacks Cumans, Goths
+    Fortified Wall | building | lacks Bulgarians, Cumans, Danes, Goths, Huns, Magyars, Malay, Mapuche, Muisca, Persians, Sicilians, Tupi, Wu
+  Gate | building | lacks Cumans, Goths
+  Outpost | building | all
+  Watch Tower | building | lacks Sicilians
+    Guard Tower | building | lacks Cumans, Goths, Huns, Mapuche, Sicilians
+      Keep | building | lacks Armenians, Aztecs, Berbers, Cumans, Franks, Goths, Hindustanis, Huns, Khitans, Magyars, Mapuche, Mongols, Persians, Shu, Sicilians, Slavs, Tatars, Varangians, Vikings
+  Bombard Tower | building | has Armenians, Bohemians, Burgundians, Byzantines, Chinese, Dravidians, Italians, Koreans, Lithuanians, Malay, Mapuche, Poles, Portuguese, Spanish, Tatars, Teutons, Turks, Vietnamese
+`;
+  // DATA END
+
+  const $ = (id) => document.getElementById(id);
+  const el = (tag, props = {}) => Object.assign(document.createElement(tag), props);
+  const srOnly = (text) => el("span", { className: "sr-only", textContent: text });
+
+  // Each civ is a bit, and each item the set of civs that have it.
+  const civBit = new Map(CIVS.map((c, i) => [c, 1n << BigInt(i)]));
+  const ALL = (1n << BigInt(CIVS.length)) - 1n;
+  const bit = (civ) => {
+    if (!civBit.has(civ)) throw new Error("unknown civ " + civ);
+    return civBit.get(civ);
+  };
+  const size = (set) => {
+    let n = 0;
+    for (let s = set; s; s &= s - 1n) n++;
+    return n;
+  };
+
+  // The items in tree order, each with its parent, children and civs. A group, such as Economy, asks nothing of a civ
+  // itself. self is how the item itself is marked: "has" for must have, "lacks" for must lack, or null.
+  const items = [];
+  const roots = [];
+  const stack = [];
+  for (const line of TREE.split("\n")) {
+    if (!line.trim()) continue;
+    const depth = (line.length - line.trimStart().length) / 2;
+    const [name, , civs] = line.trim().split(" | ");
+    let set = ALL;
+    if (civs?.startsWith("has ")) set = civs.slice(4).split(", ").reduce((s, c) => s | bit(c), 0n);
+    else if (civs?.startsWith("lacks ")) set = civs.slice(6).split(", ").reduce((s, c) => s & ~bit(c), ALL);
+    const item = { i: items.length, name, set, group: !civs, self: null, kids: [], parent: depth ? stack[depth - 1] : null };
+    (item.parent ? item.parent.kids : roots).push(item);
+    stack[depth] = item;
+    items.push(item);
+  }
+  // Marking an item marks its whole branch, so the civs that must have it are those with all of the branch.
+  const whole = (item) => (item.all ??= item.kids.reduce((s, kid) => s & whole(kid), item.set));
+  items.forEach(whole);
+
+  // ---- The tree ----
+
+  function build(list, ul) {
+    for (const item of list) {
+      const li = el("li");
+      const row = el("div", { className: "row" });
+      if (item.kids.length) {
+        item.twisty = el("button", { type: "button", className: "twisty" });
+        item.twisty.dataset.i = item.i;
+        item.twisty.setAttribute("aria-expanded", "false");
+        item.twisty.setAttribute("aria-controls", "k" + item.i);
+        item.twisty.setAttribute("aria-labelledby", "t" + item.i);
+        row.append(item.twisty);
+      } else {
+        row.append(el("span", { className: "gap" }));
+      }
+      // The rest of the row is one checkbox, as a native one can't show a cross. Screen readers hear "must lack" in its
+      // name for a cross, and "checked" or "mixed" for a tick or a part-marked branch.
+      item.count = el("span", { className: "n" });
+      item.said = el("span", { className: "sr-only" });
+      item.node = el("div", { className: item.group ? "node group" : "node", tabIndex: 0 });
+      item.node.dataset.i = item.i;
+      item.node.setAttribute("role", "checkbox");
+      item.node.append(el("span", { className: "box", ariaHidden: "true" }), el("span", { className: "name", id: "t" + item.i, textContent: item.name }),
+        item.said, item.count);
+      row.append(item.node);
+      li.append(row);
+      if (item.kids.length) {
+        item.list = el("ul", { id: "k" + item.i, hidden: true });
+        item.list.setAttribute("role", "list");
+        build(item.kids, item.list);
+        li.append(item.list);
+      }
+      ul.append(li);
+    }
+  }
+  build(roots, $("tree"));
+
+  const isOpen = (item) => item.twisty?.getAttribute("aria-expanded") === "true";
+  function setOpen(item, open) {
+    if (!item.twisty) return;
+    item.twisty.setAttribute("aria-expanded", String(open));
+    item.list.hidden = !open;
+  }
+  const shown = (item) => !item.parent || (isOpen(item.parent) && shown(item.parent));
+
+  // Arrow keys move through the tree as in a file explorer. Up and Down go to the item above or below, Home and End to
+  // the first and last. Right opens a branch, or goes into an open one, and Left closes it, or goes to its parent.
+  // Focus stays on the arrows or on the boxes, as it was. On a box, Space marks must have and X must lack.
+  $("tree").addEventListener("keydown", (e) => {
+    const item = items[e.target.dataset.i];
+    if (!item || e.altKey || e.ctrlKey || e.metaKey) return;
+    const mark = e.target === item.node && { " ": "has", x: "lacks", X: "lacks" }[e.key];
+    if (mark) {
+      e.preventDefault();
+      toggle(item, mark);
+      return;
+    }
+    if (e.shiftKey) return;
+    const rows = items.filter(shown);
+    const at = rows.indexOf(item);
+    let to = null;
+    if (e.key === "ArrowDown") to = rows[at + 1];
+    else if (e.key === "ArrowUp") to = rows[at - 1];
+    else if (e.key === "Home") to = rows[0];
+    else if (e.key === "End") to = rows[rows.length - 1];
+    else if (e.key === "ArrowRight") isOpen(item) ? (to = item.kids[0]) : setOpen(item, true);
+    else if (e.key === "ArrowLeft") isOpen(item) ? setOpen(item, false) : (to = item.parent);
+    else return;
+    e.preventDefault();
+    if (to) (e.target === item.twisty && to.twisty ? to.twisty : to.node).focus();
+  });
+  $("expandAll").addEventListener("click", () => items.forEach((item) => setOpen(item, true)));
+  $("collapseAll").addEventListener("click", () => items.forEach((item) => setOpen(item, false)));
+
+  // A click marks an item must have, with a green tick, and a right-click or a long press must lack, with a red cross.
+  // Either marks the whole branch, or clears it if the branch is marked that way already. A right-click and a long
+  // press act as the button or finger is let go, and moving off the item first calls them off.
+  const itemAt = (target) => items[target.closest?.(".node")?.dataset.i];
+  let press = null;
+  let touchEnded = -Infinity;
+  let swallowClick = false;
+  const endPress = () => {
+    if (!press) return;
+    clearTimeout(press.timer);
+    press.item.node.classList.remove("pressed");
+    if (press.timer) touchEnded = performance.now();
+    press = null;
+  };
+  $("tree").addEventListener("pointerdown", (e) => {
+    swallowClick = false;
+    endPress();
+    const item = itemAt(e.target);
+    if (!item || (e.button !== 2 && e.pointerType !== "touch")) return;
+    press = { item, id: e.pointerId, x: e.clientX, y: e.clientY, ready: e.button === 2 };
+    if (!press.ready) {
+      press.timer = setTimeout(() => {
+        press.ready = true;
+        item.node.classList.add("pressed");
+      }, 500);
+    }
+  });
+  $("tree").addEventListener("pointermove", (e) => {
+    if (press && e.pointerId === press.id && Math.hypot(e.clientX - press.x, e.clientY - press.y) > 10) endPress();
+  });
+  $("tree").addEventListener("pointerup", (e) => {
+    if (!press || e.pointerId !== press.id) return;
+    const { item, ready } = press;
+    endPress();
+    if (ready && itemAt(e.target) === item) {
+      toggle(item, "lacks");
+      swallowClick = true;
+    }
+  });
+  $("tree").addEventListener("pointercancel", endPress);
+  // The browser's menu never opens on an item. One opened from the keyboard's menu key marks must lack at once. A
+  // right-click's or a long press's menu, which some systems send as the button or finger lifts, is left to the above.
+  $("tree").addEventListener("contextmenu", (e) => {
+    const item = itemAt(e.target);
+    if (!item) return;
+    e.preventDefault();
+    if (e.button === 2 || press || performance.now() - touchEnded < 600) return;
+    toggle(item, "lacks");
+  });
+  $("tree").addEventListener("click", (e) => {
+    const twisty = e.target.closest(".twisty");
+    if (twisty) return setOpen(items[twisty.dataset.i], !isOpen(items[twisty.dataset.i]));
+    const item = itemAt(e.target);
+    if (!item || swallowClick) return;
+    toggle(item, "has");
+  });
+
+  function setMark(item, mark) {
+    if (!item.group) item.self = mark;
+    for (const kid of item.kids) setMark(kid, mark);
+  }
+  function toggle(item, mark) {
+    setMark(item, state(item) === mark ? null : mark);
+    update();
+  }
+  // An item's box shows a mark when the item and its whole branch have it, and a bar when they're marked in different
+  // ways. A group's box shows its branch alone. Rather than follow its branch alone, an item keeps its own mark:
+  // clearing Champion leaves the rest of the Militia line marked, and marking Heavy Cavalry Archer doesn't ask for a
+  // Cavalry Archer.
+  function state(item) {
+    const parts = item.kids.map(state);
+    if (!item.group) parts.push(item.self);
+    return parts.every((p) => p === parts[0]) ? parts[0] : "mixed";
+  }
+  function paint() {
+    for (const item of items) {
+      const s = state(item);
+      item.node.dataset.state = s || "";
+      item.node.setAttribute("aria-checked", s === "has" ? "true" : s === "mixed" ? "mixed" : "false");
+      item.said.textContent = s === "lacks" ? ", must lack" : "";
+      item.node.classList.toggle("self", !!item.self);
+    }
+  }
+  // Find opens the branches down to each item whose name holds what's typed, ignoring case, spaces and hyphens, closes
+  // the rest, marks the matches and scrolls the first into the pane. Enter goes to the first.
+  const plain = (text) => text.toLowerCase().replace(/[^a-z0-9]/g, "");
+  let found = [];
+  $("find").addEventListener("input", () => {
+    const text = plain($("find").value);
+    found = text ? items.filter((item) => plain(item.name).includes(text)) : [];
+    for (const item of items) item.node.classList.toggle("found", found.includes(item));
+    $("found").textContent = !text ? "" : found.length ? `${found.length} found` : "None found";
+    if (!found.length) return;
+    const open = new Set();
+    for (const item of found) for (let p = item.parent; p; p = p.parent) open.add(p);
+    for (const item of items) setOpen(item, open.has(item));
+    const pane = $("tree").parentElement;
+    const top = found[0].node.getBoundingClientRect().top - pane.getBoundingClientRect().top;
+    if (top < 0 || top > pane.clientHeight - found[0].node.offsetHeight) pane.scrollTop += top - 8;
+  });
+  $("find").addEventListener("keydown", (e) => {
+    if (e.key === "Enter" && found.length) found[0].node.focus();
+  });
+
+  $("clear").addEventListener("click", () => {
+    roots.forEach((item) => setMark(item, null));
+    update();
+  });
+
+  // ---- The civs ----
+
+  // The civs that have every must-have item and lack every must-lack item are listed, and none while nothing is
+  // marked. Each item shows how many civs would be listed if it were marked must have: those that fit the marks so far
+  // and have it and its whole branch.
+  function update() {
+    paint();
+    const marked = items.filter((item) => item.self);
+    const match = marked.reduce((m, item) => m & (item.self === "has" ? item.set : ~item.set), ALL);
+    const civs = marked.length ? CIVS.filter((c) => match & civBit.get(c)) : [];
+    $("count").textContent = `${civs.length} compatible civilisation${civs.length === 1 ? "" : "s"}`;
+    $("civs").replaceChildren(...civs.map((c) => el("li", { textContent: c })));
+    $("none").hidden = civs.length > 0;
+    $("none").textContent = marked.length ? "No civ fits all of the filters." : "Click items in the tree to list the civs that have them.";
+    for (const item of items) {
+      const n = size(match & item.all);
+      item.count.replaceChildren(String(n), srOnly(n === 1 ? " civ" : " civs"));
+    }
+    // A chip for each marked item, but for one whose parent's whole branch is marked the same way: the parent's chip
+    // stands for its branch.
+    const mark = (item) => (["has", "lacks"].includes(state(item)) ? state(item) : item.self);
+    const filters = items.filter((item) => mark(item) && !(item.parent && state(item.parent) === mark(item)));
+    $("ticked").hidden = !filters.length;
+    $("chips").replaceChildren(...filters.map((item) => {
+      const chip = el("button", { type: "button", className: "chip" });
+      chip.dataset.i = item.i;
+      chip.dataset.state = mark(item);
+      chip.append(el("span", { className: "box", ariaHidden: "true" }), srOnly(mark(item) === "has" ? "Clear must have: " : "Clear must lack: "),
+        chipName(item), el("span", { textContent: "×", ariaHidden: "true" }));
+      return el("li").appendChild(chip).parentNode;
+    }));
+  }
+  // A chip's name has "Full" before an item whose whole branch must be had, such as Full Blacksmith, and its parent's
+  // name after a group's whose name others share, such as Unique Units (Castle).
+  const shared = new Set(items.filter((a) => items.some((b) => b !== a && b.name === a.name)).map((a) => a.name));
+  const chipName = (item) => (item.kids.length && state(item) === "has" ? "Full " : "") + item.name
+    + (shared.has(item.name) && item.parent ? ` (${item.parent.name})` : "");
+  // A chip clears its item and its branch. Focus goes to the next chip, or the one before, or else to the Civs heading.
+  $("chips").addEventListener("click", (e) => {
+    const chip = e.target.closest(".chip");
+    if (!chip) return;
+    const at = [...$("chips").querySelectorAll(".chip")].indexOf(chip);
+    setMark(items[chip.dataset.i], null);
+    update();
+    const chips = $("chips").querySelectorAll(".chip");
+    (chips[at] || chips[at - 1] || $("civTitle")).focus();
+  });
+
+  update();
+})();
+</script>
+</body>
+</html>

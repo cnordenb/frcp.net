@@ -110,12 +110,12 @@ body {
 :root:not([data-simple]) .menu-list hr { border-top-color: rgba(241, 222, 174, .3); }
 /* Items that open another site get the external icon in their left margin. It's drawn in the menu
    text's colour, so it turns black with the text on the hovered item. */
-:root:not([data-simple]) :is(.menu-list > a, #menu-civs > [data-act="techtree"]) { position: relative; }
-:root:not([data-simple]) :is(.menu-list > a, #menu-civs > [data-act="techtree"])::before {
+:root:not([data-simple]) :is(.menu-list > a[target="_blank"], #menu-civs > [data-act="techtree"]) { position: relative; }
+:root:not([data-simple]) :is(.menu-list > a[target="_blank"], #menu-civs > [data-act="techtree"])::before {
   content: ""; position: absolute; left: 9px; top: 50%; width: 12px; height: 12px; margin-top: -6px;
   background: url("images/ui/external.webp") center / contain no-repeat;
 }
-:root:not([data-simple]) :is(.menu-list > a, #menu-civs > [data-act="techtree"]):is(:hover, :focus-visible)::before { filter: brightness(0); }
+:root:not([data-simple]) :is(.menu-list > a[target="_blank"], #menu-civs > [data-act="techtree"]):is(:hover, :focus-visible)::before { filter: brightness(0); }
 
 .client { position: relative; width: 534px; height: 511px; background: #fff; overflow: hidden; }
 .frame { position: absolute; left: 0; right: 0; top: 21px; bottom: 0; border: 1px solid var(--line); }

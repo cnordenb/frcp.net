@@ -20,6 +20,8 @@
   min-width: 0; padding: 16px; justify-content: flex-start; font: 16px/1.5 var(--ui);
 }
 [data-simple] :is(#civIcon, #civGhost, #editionIcon, #soundGroup, .app-icon, .mob) { display: none !important; }
+/* The FRCP menu's link to simple mode, which is this page */
+[data-simple] #simpleLink { display: none !important; }
 
 /* The site's name, as text */
 [data-simple] .site-title {

@@ -46,9 +46,11 @@ export function serve() {
   return new Promise((ok) => server.listen(0, "127.0.0.1", () => ok({ base: `http://127.0.0.1:${server.address().port}`, close: () => server.close() })));
 }
 
-// Starts Chrome. The profile lives in one folder of the system's temp folder, which each run reuses.
+// Starts Chrome. The profile lives in a folder of the system's temp folder, one per test file, which each run reuses.
+// Test files run side by side, and a second Chrome on a profile that's in use quits at once, leaving its test to wait
+// for it forever.
 export async function launch(executable) {
-  const profile = path.join(os.tmpdir(), "frcp-test-chrome");
+  const profile = path.join(os.tmpdir(), "frcp-test-chrome-" + path.basename(process.argv[1] || "run", ".js"));
   mkdirSync(profile, { recursive: true });
   const args = ["--headless", "--remote-debugging-pipe", `--user-data-dir=${profile}`, "--no-first-run", "--no-default-browser-check",
     "--disable-extensions", "--mute-audio", ...(process.platform === "linux" && process.env.CI ? ["--no-sandbox"] : []), "about:blank"];
@@ -75,7 +77,15 @@ export async function launch(executable) {
       }
     }
   });
+  // If Chrome quits, what's still waiting for it fails, rather than leaving its test to wait forever.
+  let quit = null;
+  child.once("exit", (code, signal) => {
+    quit = new Error(`Chrome quit (${signal || "exit code " + code})`);
+    for (const { fail, method } of pending.values()) fail(new Error(`${method}: ${quit.message}`));
+    pending.clear();
+  });
   const send = (method, params = {}, sessionId) => new Promise((ok, fail) => {
+    if (quit) return fail(new Error(`${method}: ${quit.message}`));
     const mid = ++id;
     pending.set(mid, { ok, fail, method });
     toChrome.write(JSON.stringify({ id: mid, method, params, sessionId }) + "\0");
@@ -98,8 +108,8 @@ const KEYS = {
   Home: [36, "Home"], End: [35, "End"], F2: [113, "F2"], F8: [119, "F8"], F9: [120, "F9"],
 };
 
-// Opens a page in a tab of its own. opts: width, height, mobile (touch, for phones), dark, forcedColors, and storage,
-// the localStorage values to start with.
+// Opens a page in a tab of its own. opts: width, height, mobile (touch, for phones), dark, forcedColors, storage, the
+// localStorage values to start with, and ready, an expression that's true once the page is ready.
 export async function openPage(browser, base, url, opts = {}) {
   // Each page gets a window of its own, which counts as focused, so pages can run side by side without the
   // timers of a background tab slowing down.
@@ -135,8 +145,9 @@ export async function openPage(browser, base, url, opts = {}) {
   await go(base + "/favicon.ico");
   await evaluate(`localStorage.clear(); ${Object.entries(opts.storage || {}).map(([k, v]) => `localStorage.setItem(${JSON.stringify(k)}, ${JSON.stringify(JSON.stringify(v))});`).join("")}`);
   await go(base + url);
-  // The page is ready once its script has rendered the Civ Pool count.
-  await evaluate("new Promise((ok) => { const t = () => document.getElementById('enabledCount')?.textContent ? ok() : setTimeout(t, 20); t(); })");
+  // The picker is ready once its script has rendered the Civ Pool count.
+  const ready = opts.ready || "document.getElementById('enabledCount')?.textContent";
+  await evaluate(`new Promise((ok) => { const t = () => (${ready}) ? ok() : setTimeout(t, 20); t(); })`);
   await evaluate("document.fonts.ready");
   return {
     eval: evaluate, send: s, errors,
