@@ -63,20 +63,24 @@ const RESET = `(() => {
   document.getElementById("tab-0").click();
 })()`;
 
-// The screen setups: 1280 px is a desktop window, 640 x 512 is one at 200 % zoom, and 320 x 256 one at 400 % zoom
-// or a small phone, and 720 px is the narrowest that keeps the wide layout. Text spacing applies WCAG's spacing
-// overrides. A wide font stands in for a system without Segoe UI, such as Linux with DejaVu Sans, whose text runs
-// wider.
+// The screen setups: 1280 px is a desktop window, 640 x 512 is one at 200 % zoom, and 320 x 256 one at 400 % zoom,
+// 720 px is the narrowest that keeps the wide layout, and 375 x 667 and 320 x 568 are phones, whose page doesn't
+// scroll. Text spacing applies WCAG's spacing overrides. A wide font stands in for a system without Segoe UI, such as
+// Linux with DejaVu Sans, whose text runs wider.
 const WIDE_FONT = "Verdana, 'DejaVu Sans', sans-serif";
+const PHONE = { width: 375, height: 667, mobile: true };
+const SMALL_PHONE = { width: 320, height: 568, mobile: true };
 const SWEEPS = [
   { name: "1280 px", opts: { width: 1280, height: 900 }, axe: true, checks: ["targets", "contrast", "reflow", "overlaps", "visualPresentation", "newTabs"], text: true },
   { name: "1280 px, dark", opts: { width: 1280, height: 900, dark: true }, axe: true, checks: ["contrast"] },
   { name: "640 px", opts: { width: 640, height: 512 }, axe: true, checks: ["targets", "reflow", "overlaps", "visualPresentation"] },
   { name: "320 px", opts: { width: 320, height: 256, mobile: true }, axe: true, checks: ["targets", "contrast", "reflow", "overlaps"] },
+  { name: "375 x 667 phone", opts: PHONE, axe: true, checks: ["targets", "contrast", "reflow", "overlaps", "visualPresentation"] },
   { name: "1280 px with text spacing", opts: { width: 1280, height: 900 }, spacing: true, checks: ["targets", "reflow", "overlaps"] },
   { name: "640 px with text spacing", opts: { width: 640, height: 512 }, spacing: true, checks: ["targets", "reflow", "overlaps"] },
   { name: "320 px with text spacing", opts: { width: 320, height: 256, mobile: true }, spacing: true, checks: ["targets", "reflow", "overlaps"] },
-  ...[[720, 600], [640, 512], [320, 256]].map(([width, height]) => (
+  { name: "320 x 568 phone with text spacing", opts: SMALL_PHONE, spacing: true, checks: ["targets", "reflow", "overlaps"] },
+  ...[[720, 600], [640, 512], [320, 256], [320, 568]].map(([width, height]) => (
     { name: `${width} px with a wide font and text spacing`, opts: { width, height, mobile: width < 610 }, spacing: true, font: WIDE_FONT, checks: ["targets", "reflow", "overlaps"] })),
 ];
 const AXE_TAGS = ["wcag2a", "wcag2aa", "wcag2aaa", "wcag21a", "wcag21aa", "wcag22aa"];
@@ -280,7 +284,7 @@ test("2.4.3 Focus Order: focus comes back from a dialog, and follows a tab hotke
   await done(page);
 });
 
-for (const [size, opts] of [["1280 px", { width: 1280, height: 900 }], ["320 px", { width: 320, height: 256, mobile: true }]]) {
+for (const [size, opts] of [["1280 px", { width: 1280, height: 900 }], ["320 px", { width: 320, height: 256, mobile: true }], ["a 375 x 667 phone", PHONE]]) {
   test(`2.4.7, 2.4.11, 2.4.12, 2.4.13 Focus: at ${size}, every Tab stop on every tab has a ring 2 px or wider, at 3:1, uncovered`, { skip }, async () => {
     const page = await open(opts);
     const problems = [];
@@ -390,6 +394,42 @@ test("2.5.2 Pointer Cancellation: a click outside an open menu only closes it, a
   await page.click(...await center("#drawBtn"));
   assert.notEqual(await drawn(), before, "the next click presses Draw");
   await done(page);
+});
+
+// ---- Phones ----
+
+test("1.4.10 Reflow: on a phone only the tab's panel scrolls, a menu lies over the page without moving it, and at 400 % zoom the page scrolls", { skip }, async () => {
+  const page = await open(SMALL_PHONE);
+  const pageScrolls = () => page.eval(`document.documentElement.scrollHeight > document.documentElement.clientHeight + 1`);
+  const places = () => page.eval(`[".tabstrip", "#panel", "#toast"].map((s) => { const r = document.querySelector(s).getBoundingClientRect(); return s + " " + Math.round(r.top) + "+" + Math.round(r.height); }).join(", ")`);
+  for (const t of [0, 1, 2]) {
+    await page.eval(`document.getElementById("tab-${t}").click()`);
+    assert.equal(await pageScrolls(), false, `tab ${t}: the page doesn't scroll`);
+  }
+  assert.equal(await page.eval(`(() => { const p = document.getElementById("panel"); return p.scrollHeight > p.clientHeight && getComputedStyle(p).overflowY; })()`), "auto", "the Civ Pool tab's panel scrolls");
+  await page.eval(`document.getElementById("panel").scrollTop = 500; document.getElementById("tab-1").click()`);
+  assert.equal(await page.eval(`document.getElementById("panel").scrollTop`), 0, "a tab opens at its top");
+  await page.eval(`document.getElementById("tab-0").click()`);
+  const before = await places();
+  for (const name of ["File", "Lobbies", "Civs", "Game", "FRCP", "Help"]) {
+    await page.eval(`[...document.querySelectorAll("#menubar .menu-title")].find((t) => t.textContent === ${JSON.stringify(name)}).click()`);
+    const menu = await page.eval(`(() => {
+      const l = document.querySelector("#menubar .menu-list:not([hidden])"), r = l.getBoundingClientRect(), c = document.getElementById("client").getBoundingClientRect();
+      return { inside: r.top >= c.top - 1 && r.bottom <= c.bottom + 1 && r.left >= c.left - 1 && r.right <= c.right + 1,
+        reachable: l.scrollHeight <= l.clientHeight + 1 || getComputedStyle(l).overflowY === "auto" };
+    })()`);
+    assert.equal(menu.inside, true, `${name}: the menu lies within the window, below the menu bar`);
+    assert.equal(menu.reachable, true, `${name}: the menu scrolls if it's taller than the window`);
+    assert.equal(await places(), before, `${name}: opening the menu moves nothing`);
+    assert.equal(await pageScrolls(), false, `${name}: the page still doesn't scroll`);
+    await page.key("Escape");
+  }
+  await done(page);
+  // At 400 % zoom, parts that stayed put would leave the panel no room, so the page scrolls as a whole.
+  const zoomed = await open({ width: 320, height: 256, mobile: true });
+  await zoomed.eval(`document.getElementById("tab-2").click()`);
+  assert.equal(await zoomed.eval(`document.documentElement.scrollHeight > 1000 && getComputedStyle(document.getElementById("panel")).overflowY === "visible"`), true);
+  await done(zoomed);
 });
 
 // ---- Errors, messages and undo ----

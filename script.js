@@ -502,6 +502,8 @@ import { MersenneTwister, createLogic } from "./logic.js";
     sfx("tab");
     preload(...TAB_IMAGES[i]);
     render();
+    // On a phone, simple mode's panel scrolls, and the three tabs share it, so each tab opens at its top.
+    els.panel.scrollTop = 0;
     // A hotkey can switch tabs from a control that the new tab hides: in simple mode, focus goes to the new tab.
     const focused = document.activeElement;
     if (SIMPLE && focused && focused !== document.body && !focused.checkVisibility()) els.tabs[i].focus();
@@ -1190,6 +1192,14 @@ import { MersenneTwister, createLogic } from "./logic.js";
     menu.querySelector(".menu-list").hidden = false;
     menu.querySelector(".menu-title").setAttribute("aria-expanded", "true");
     openMenuEl = menu;
+    fitMenu();
+  }
+  // On a phone, simple mode lays the open menu over the window below the menu bar, and simple.css lets it scroll when
+  // it's taller than that room, which this measures.
+  function fitMenu() {
+    if (!SIMPLE || !openMenuEl) return;
+    const list = openMenuEl.querySelector(".menu-list");
+    list.style.setProperty("--room", els.client.getBoundingClientRect().bottom - list.getBoundingClientRect().top + "px");
   }
   function closeMenus() {
     if (!openMenuEl) return;
@@ -1314,6 +1324,9 @@ import { MersenneTwister, createLogic } from "./logic.js";
       else if (tipBy === "focus") hideTip();
     });
     document.addEventListener("focusout", () => { if (tipBy === "focus") hideTip(); });
+    // A tooltip moves with its control when the page, the panel or a log scrolls, as when focus scrolls a control into
+    // view after its tooltip shows.
+    document.addEventListener("scroll", () => { if (tipTarget) showTip(tipTarget, tipBy); }, { capture: true, passive: true });
     // Esc hides any tooltip, and any other key a mouse one, so that none covers what the keyboard moves to.
     document.addEventListener("keydown", (e) => {
       if (tipTarget && (e.key === "Escape" || tipBy === "mouse")) {
@@ -1794,8 +1807,11 @@ import { MersenneTwister, createLogic } from "./logic.js";
     } else {
       bindSwipes();
     }
-    // The phone layout's logs change size with the screen, and their scrollbars follow.
-    window.addEventListener("resize", () => { for (const log of logBars.keys()) paintLogBar(log); });
+    // The phone layout's logs change size with the screen, and their scrollbars follow, as does an open menu's room.
+    window.addEventListener("resize", () => {
+      for (const log of logBars.keys()) paintLogBar(log);
+      fitMenu();
+    });
 
     document.addEventListener("keydown", onKeyDown);
     document.addEventListener("keyup", (e) => {

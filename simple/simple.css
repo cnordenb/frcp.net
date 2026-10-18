@@ -2,7 +2,8 @@
    at level AAA. In place of the desktop app's pixel positions, each tab is a grid that grows with its text, so the
    page works at any zoom, width or text spacing. Every control is at least 44 x 44 px, text is 16 px with 1.5 line
    spacing and at least 7:1 contrast, and the focus ring is a 3 px black outline. At phone widths the page keeps this
-   layout, with the menu bar and buttons in place of the phone layout's tab bar, hamburger and swipes. Selectors start
+   layout, with the menu bar and buttons in place of the phone layout's tab bar, hamburger and swipes, and on a phone's
+   screen it fits the screen, with only the tab's panel scrolling. Selectors start
    with [data-simple] so that they outrank style.css's rules for the same elements. */
 
 [data-simple] {
@@ -239,7 +240,8 @@
 }
 
 /* Below the window's full width, an open menu takes a row of its own under the menu bar, the width of the window, and
-   moves the page down rather than covering it: none runs off the screen or hides a control. */
+   moves the page down rather than covering it: none runs off the screen or hides a control. On a phone's screen it
+   lies over the page instead, as the last block below sets out. */
 @media (max-width: 899px) {
   [data-simple] .menu { display: contents; }
   [data-simple] .menu-list { position: static; order: 1; flex-basis: 100%; min-width: 0; margin-bottom: 4px; box-shadow: none; }
@@ -273,4 +275,29 @@
   [data-simple] .dlg-x { display: block; }
   [data-simple] .terms { grid-template-columns: minmax(0, 1fr); gap: 0 16px; }
   [data-simple] .terms dd { margin-bottom: 8px; }
+}
+
+/* Phones: the page fits the screen and doesn't scroll. The site's name, title bar, menu bar, tabs and status bar stay
+   put, and the tab's panel scrolls when its content is taller than the room left. On the Log tab the logs share that
+   room, down to 8rem each. An open menu lies over the window below the menu bar, so nothing moves, and scrolls if it's
+   taller than that room, which script.js measures into --room. Focus stays in an open menu, and the menu closes when
+   focus or a tap goes elsewhere, so it never covers the focused control. Under 500 px tall, such as at 300 % or 400 %
+   zoom, the page above scrolls as a whole instead, as the parts that stay put would leave the panel too little room. */
+@media (max-width: 609px) and (min-height: 500px) {
+  [data-simple], [data-simple] body { height: 100%; overflow: hidden; overscroll-behavior: none; }
+  [data-simple] body { min-height: 0; }
+  [data-simple] :is(#app, .window, .client) { flex: 1; min-height: 0; display: flex; flex-direction: column; }
+  [data-simple] :is(.site-title, .titlebar, .menubar, .tabstrip, #toast) { flex: none; }
+  /* The phone layout's rows from style.css would stretch to fill the panel, so the rows here fit their content. When
+     focus scrolls a checkbox into view, the scroll padding brings in the rest of its 44 px label and its focus ring. */
+  [data-simple] .client[data-tab] .panel {
+    flex: 1; min-height: 0; grid-template-rows: none; align-content: start; overflow-y: auto; overscroll-behavior: contain; scroll-padding: 20px;
+  }
+  [data-simple] .client[data-tab="1"] .panel { grid-template-rows: auto auto auto minmax(8rem, 1fr) auto minmax(8rem, 1fr) auto; }
+  [data-simple] .client[data-tab="1"] .panel:has(> #remainingLog[hidden]) { grid-template-rows: auto auto auto minmax(8rem, 1fr) auto 0 auto; }
+  [data-simple] :is(#drawnLog, #remainingLog) { height: auto; }
+  [data-simple] .menu-list {
+    position: absolute; top: 100%; left: 0; right: 0; max-height: var(--room, none); margin: 0; overflow-y: auto; overscroll-behavior: contain;
+    box-shadow: 0 4px 12px rgba(0, 0, 0, .3);
+  }
 }
