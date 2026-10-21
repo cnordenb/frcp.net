@@ -2,7 +2,8 @@ NB: Civ Explorer has its own [github repository](https://github.com/cnordenb/aoe
 
 # [frcp.net](https://frcp.net/)
 
-<img width="1031" height="1097" alt="image" src="https://github.com/user-attachments/assets/f7d828aa-4d90-4c51-bca2-6ff85221ee4a" />
+<img width="576" height="620" alt="image" src="https://github.com/user-attachments/assets/b77ce274-c839-4a3d-9f37-26debb78099d" />
+
 
 
 Fresh Random Civ Picker in the browser. Ported to HTML, CSS and JavaScript from the [C++ Windows GUI version](https://github.com/cnordenb/Fresh-Random-Civ-Picker_GUI).
