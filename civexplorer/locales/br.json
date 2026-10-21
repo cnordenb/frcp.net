@@ -33,6 +33,7 @@
       "options": "Opções",
       "includeAll": "Incluir exclusivos e universais",
       "includeHint": "Mostra também unidades, tecnologias e construções exclusivas, o que todas as civilizações têm e o que só uma civilização tem.",
+      "includeRegional": "Incluir regionais",
       "simple": "Interface simples",
       "civView": "Exibição das civilizações:",
       "viewList": "Lista",

@@ -18,11 +18,17 @@ export function setTips(on) {
   tick("tooltips", on);
 }
 
-const tipFor = (target) => (itemAt(target) ? words.ui.nodeTip : target.closest?.(".civs a")?.href ?? "");
+const tipFor = (target) => {
+  if (itemAt(target)) return words.ui.nodeTip;
+  if (target.closest?.("#include")) return words.ui.includeHint;
+  return target.closest?.(".civs a")?.href ?? "";
+};
 
 function wireTip() {
   const tip = $("tip");
   document.addEventListener("pointermove", (e) => {
+    const host = e.target.closest?.("dialog[open]") ?? document.body;
+    if (tip.parentElement !== host) host.append(tip);
     tip.textContent = simple || !tips || e.pointerType !== "mouse" ? "" : tipFor(e.target);
     tip.hidden = !tip.textContent;
     if (tip.hidden) return;

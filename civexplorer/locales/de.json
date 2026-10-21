@@ -37,6 +37,7 @@
       "options": "Optionen",
       "includeAll": "Spezielles und Allgemeines einbeziehen",
       "includeHint": "Zeigt auch Spezialeinheiten, -technologien und -gebäude, was alle Völker haben und was nur ein Volk hat.",
+      "includeRegional": "Regionales einbeziehen",
       "simple": "Einfache Oberfläche",
       "civView": "Völkeransicht:",
       "viewList": "Liste",

@@ -1,4 +1,4 @@
-import { data, ALL, size, civsOf, treeKeys, collator, civName, nameOf } from "../datahandler.js";
+import { data, ALL, size, civsOf, treeKeys, collator, civName, nameOf, load } from "../datahandler.js";
 import { items, whole, lineOf, lineEnd, shared } from "../model.js";
 import { $, setMenu, options } from "../ui.js";
 
@@ -11,6 +11,17 @@ export const check = (name, ok, detail = "") => results.push({ name, ok: Boolean
 export const expect = (name, offenders) => check(name, !offenders.length, offenders.slice(0, 5).join("; "));
 
 export const wait = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
+
+export const loaded = (images) => Promise.race([Promise.all(images.map((img) => img.complete || new Promise((done) => ["load", "error"]
+  .forEach((type) => img.addEventListener(type, done))))), wait(10000)]);
+
+export const phone = () => matchMedia("(width < 720px) and (height > 639px)").matches;
+
+export const spans = () => (phone()
+  ? getComputedStyle(document.querySelector(".foot")).display === "none"
+  : Math.abs(document.querySelector(".foot").getBoundingClientRect().width - document.querySelector(".panes").getBoundingClientRect().width) < 1);
+
+export const need = (ok, problem) => (ok ? [] : [problem]);
 
 export const same = (a, b) => a.length === b.length && a.every((x, i) => x === b[i]);
 
@@ -29,6 +40,22 @@ export const styles = (el) => [getComputedStyle(el), getComputedStyle(el, "::bef
 
 export const pictured = (el) => styles(el).some((style) => style.backgroundImage !== "none" || style.listStyleImage !== "none"
   || style.borderImageSource !== "none" || /url\(/.test(style.content) || /url\(/.test(style.cursor));
+
+export const pictures = () => [...document.querySelectorAll("img"), root, document.body, ...everything()]
+  .filter((el) => el.tagName === "IMG" || pictured(el)).map(describe);
+
+export const picturesOn = () => [describe(root), "body", describe($("optionsButton"))]
+  .every((name) => pictures().includes(name));
+
+export const simpleSpot = () => {
+  const box = $("simple").querySelector(".box").getBoundingClientRect();
+  return `${box.left},${box.top}`;
+};
+
+export const simpleTicked = (on) => $("simple").getAttribute("aria-checked") === String(on)
+  && $("simple").dataset.state === (on ? "has" : "");
+
+export const civLinks = () => $("civs").children.length > 0 && $("civs").querySelectorAll("a[href]").length;
 
 export const focusables = () => [...document.querySelectorAll("a[href], button, input, select, textarea, [tabindex]")]
   .filter((el) => el.tabIndex >= 0 && !el.disabled && rendered(el));
@@ -106,6 +133,36 @@ export const itemAbove = (item) => {
   for (let p = item.parent; p; p = p.parent) if (!p.group) return true;
   return false;
 };
+
+const KINDS = { unit: "unit", building: "building", technology: "tech" };
+
+const rgb = (hex) => `rgb(${[0, 2, 4].map((at) => parseInt(hex.slice(at, at + 2), 16)).join(", ")})`;
+
+export async function edges() {
+  const [head, ...rows] = (await load(`${data.icons.nodes}colour_key.csv`)).trim().split(/\r?\n/).map((line) => line.trim().split(","));
+  return new Map(rows.flatMap(([reach, ...colours]) => colours.map((hex, i) => [`${KINDS[head[i + 1]]} ${reach}`, rgb(hex)])));
+}
+
+export const shownKeys = () => items.filter((item) => !item.group).map((item) => item.key);
+
+export const uniqueKeys = () => {
+  const under = (nodes, inside) => nodes.flatMap((node) => [
+    ...(inside && node.item ? [node.item] : []), ...under(node.kids ?? [], inside || node.unique === true),
+  ]);
+
+  return new Set(under(data.tree, false));
+};
+
+export const regionalKeys = () => new Set(keys().filter((key) => data.pictures[key].reach === "regional"));
+
+export const outside = (nodes, regional) => nodes.flatMap((node) => (regional.has(node.item)
+  ? []
+  : [...(node.item ? [node.item] : []), ...outside(node.kids ?? [], regional)]));
+
+export const keptPath = () => items.find((item) => !item.group && !item.kids.length && item.parent && data.pictures[item.key].reach !== "regional").path;
+
+export const byPath = (path) => items.find((item) => item.path === path);
+
 
 export function fixtures() {
   const leaves = items.filter((item) => !item.group && !item.kids.length);

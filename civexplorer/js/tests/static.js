@@ -6,7 +6,6 @@ import { TAG, check, expect, same, codes, keys } from "./helpers.js";
 
 const slash = "/";
 const here = new URL(".", location.href).href;
-const LIMIT = 400;
 
 export async function scripts() {
   const files = new Map();
@@ -34,6 +33,132 @@ export async function scripts() {
   return [...files.values()];
 }
 
+const FILE_LIMIT = 400;
+const FUNCTION_LIMIT = 60;
+const LINE_LIMIT = 120;
+const TICK = "`";
+
+const linesOfCode = (code) => code.split("\n").filter((line) => line.trim()).length;
+
+const regexMayStart = (last, word) => !last || /[(,=:[!&|?{};+\-*%<>~^]/.test(last)
+  || ["return", "typeof", "case"].includes(word);
+
+function closing(code, at) {
+  let end = at + 1;
+  if (code[at] !== "/") {
+    while (end < code.length && code[end] !== code[at]) end += code[end] === "\\" ? 2 : 1;
+    return end;
+  }
+  for (let set = false; end < code.length && (set || code[end] !== "/"); end++) {
+    if (code[end] === "\\") end++;
+    else if (code[end] === "[" || code[end] === "]") set = code[end] === "[";
+  }
+  return end;
+}
+
+function blanked(code) {
+  const out = code.split("");
+  const stack = [{ template: false, depth: 0 }];
+  let last = "";
+  let word = "";
+
+  const blank = (from, to) => {
+    for (let k = from; k < to; k++) if (out[k] !== "\n") out[k] = " ";
+  };
+
+  for (let i = 0; i < code.length; i++) {
+    const c = code[i];
+    const top = stack.at(-1);
+    if (top.template) {
+      if (c === TICK) {
+        stack.pop();
+        last = c;
+      } else if (c === "$" && code[i + 1] === "{") {
+        blank(i, i + 2);
+        stack.push({ template: false, depth: 0 });
+        i++;
+      } else {
+        blank(i, c === "\\" ? i + 2 : i + 1);
+        if (c === "\\") i++;
+      }
+      continue;
+    }
+    if (/\s/.test(c)) continue;
+    if (c === "\"" || c === "'" || (c === "/" && regexMayStart(last, word))) {
+      const end = closing(code, i);
+      blank(i + 1, end);
+      i = end;
+    } else if (c === TICK) stack.push({ template: true, depth: 0 });
+    else if (c === "{") top.depth++;
+    else if (c === "}" && top.depth === 0 && stack.length > 1) {
+      blank(i, i + 1);
+      stack.pop();
+    } else if (c === "}") top.depth--;
+    word = /[\w$]/.test(c) ? (/[\w$]/.test(code[i - 1] ?? "") ? word : "") + c : "";
+    last = c;
+  }
+  return out.join("");
+}
+
+function opensBody(text, at, paren) {
+  const before = text.slice(Math.max(0, at - 200), at).trimEnd();
+  if (before.endsWith("=>")) return true;
+  if (!before.endsWith(")")) return false;
+  const word = /([\w$]+)\s*$/.exec(text.slice(Math.max(0, paren - 60), paren))?.[1];
+  return !!word && !/^(if|for|while|switch|catch|with)$/.test(word);
+}
+
+function functionsOf(code) {
+  const text = blanked(code);
+  const parens = [];
+  const braces = [];
+  const found = [];
+  let paren = -1;
+  for (let i = 0; i < text.length; i++) {
+    if (text[i] === "(") parens.push(i);
+    else if (text[i] === ")") paren = parens.pop();
+    else if (text[i] === "{") braces.push({ at: i, body: opensBody(text, i, paren) });
+    else if (text[i] === "}") {
+      const brace = braces.pop();
+      if (brace?.body) found.push({ from: brace.at, to: i });
+    }
+  }
+  return found;
+}
+
+function longFunctions(code, lines) {
+  const starts = [0, ...[...code.matchAll(/\n/g)].map((match) => match.index + 1)];
+  const lineOf = (at) => starts.findLastIndex((start) => start <= at) + 1;
+
+  const nameOf = (line) => /(?:function\s*|const\s+|let\s+)([\w$]+)/.exec(lines[line - 1])?.[1] ?? "a function";
+
+  const sizeOf = ({ from, to }) => linesOfCode(lines.slice(lineOf(from) - 1, lineOf(to)).join("\n"));
+
+  return functionsOf(code).filter((each) => sizeOf(each) > FUNCTION_LIMIT)
+    .map((each) => `${nameOf(lineOf(each.from))} at line ${lineOf(each.from)} has ${sizeOf(each)} lines of code`);
+}
+
+function sizeProblems(page, sheet, files) {
+  const sources = [
+    { path: "index.html", code: page.split("<!-- Code injected by live-server -->")[0] },
+    { path: "style.css", code: sheet },
+    ...files,
+  ].map(({ path, code }) => ({ path, code, lines: code.split("\n").map((line) => line.replace(/\r$/, "")) }));
+
+  const wide = (lines) => lines.flatMap((line, i) => (line.length > LINE_LIMIT ? [i + 1] : []));
+
+  const widths = ({ path, lines }) => `${path} has ${wide(lines).length} line${wide(lines).length === 1 ? "" : "s"} `
+    + `over ${LINE_LIMIT} characters, from line ${wide(lines)[0]}`;
+
+  return [
+    ...sources.filter(({ code }) => linesOfCode(code) > FILE_LIMIT)
+      .map(({ path, code }) => `${path} has ${linesOfCode(code)} lines of code`),
+    ...sources.filter(({ path }) => path.endsWith(".js"))
+      .flatMap(({ path, code, lines }) => longFunctions(code, lines).map((problem) => `${path}: ${problem}`)),
+    ...sources.filter(({ path, lines }) => path.endsWith(".js") && wide(lines).length).map(widths),
+  ];
+}
+
 export function sourceTests(page, sheet, files) {
   const failing = (cases) => Object.entries(cases).filter(([, bad]) => bad).map(([name]) => name);
 
@@ -54,10 +179,8 @@ export function sourceTests(page, sheet, files) {
     ...named((file) => testing(file) !== file.dynamic),
   ]);
 
-  const linesOfCode = (code) => code.split("\n").filter((line) => line.trim()).length;
-
-  expect(`rules: no script is over ${LIMIT} lines of code`, files.filter(({ code }) => linesOfCode(code) > LIMIT)
-    .map(({ path, code }) => `${path} has ${linesOfCode(code)}`));
+  expect(`rules: no file has over ${FILE_LIMIT} lines of code, no function over ${FUNCTION_LIMIT}, `
+    + `and no line of a script over ${LINE_LIMIT} characters`, sizeProblems(page, sheet, files));
   expect("rules: only ui.js, report.js, pictures.js and the tests touch the page, and only datahandler.js and the tests load or store data", [
     ...named((file) => !testing(file) && !["js/ui.js", "js/report.js", "js/pictures.js"].includes(file.path) && /\b(document|window)\b|getElementById|querySelector|addEventListener/.test(file.code)),
     ...named((file) => !testing(file) && file.path !== "js/datahandler.js" && /XMLHttpRequest|localStorage|\bfetch\s*\(/.test(file.code)),
@@ -110,11 +233,13 @@ export function dataTests() {
     ...needless(node.kids ?? []),
   ]);
 
-  expect("data: an item is optional if some civilisation has everything under it without having the item, with or without unique and universal items",
-    [...new Set([...needless(data.tree), ...needless(prune(data.tree))])]);
-  expect("data: each item says which civilisations have it, naming only known ones", all.filter((key) => {
+  expect("data: an item is optional if some civilisation has everything under it without having the item, with or without unique, universal and regional items",
+    [...new Set([data.tree, prune(data.tree), prune(data.tree, true, false), prune(data.tree, false, false)].flatMap(needless))]);
+  expect("data: each item says which civilisations have it, naming only known ones, and which icon it has", all.filter((key) => {
     const rule = data.availability[key];
-    return !rule || (rule !== "all" && (rule.has ?? rule.lacks ?? [null]).some((civ) => !data.civs.includes(civ)));
+    const { kind, picture, reach } = data.pictures[key] ?? {};
+    return !rule || (rule !== "all" && (rule.has ?? rule.lacks ?? [null]).some((civ) => !data.civs.includes(civ)))
+      || !kind || !Number.isInteger(picture) || !reach;
   }));
   expect("data: counted texts have an 'other' form", languages.flatMap((code) => Object.entries(data.text[code].ui)
     .filter(([, value]) => typeof value === "object" && !value.other).map(([key]) => `${code}: ${key}`)));

@@ -33,6 +33,7 @@
       "options": "オプション",
       "includeAll": "固有と共通の項目を含める",
       "includeHint": "固有のユニット、テクノロジー、建物に加え、すべての文明が持つ項目と、1 つの文明だけが持つ項目も表示します。",
+      "includeRegional": "地域の項目を含める",
       "simple": "シンプル UI",
       "civView": "文明の表示：",
       "viewList": "リスト",

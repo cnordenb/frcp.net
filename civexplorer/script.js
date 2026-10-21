@@ -15,6 +15,6 @@ load("data.json").then((raw) => {
   return null;
 }).catch((error) => {
   showLoadError();
-  if (params.has("test")) import("./js/tests/run.js").then(({ loadFailed }) => loadFailed(error));
+  if (params.has("test")) import("./js/tests/run.js").then(({ loadFailed }) => loadFailed());
   throw error;
 });

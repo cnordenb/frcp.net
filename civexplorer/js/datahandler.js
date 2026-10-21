@@ -52,6 +52,8 @@ export const nameOf = (item) => (item.group ? words.groups[item.key] : words.ite
 
 export const civName = (civ) => words.civs[civ] ?? civ;
 
+export const iconFile = ({ kind, picture }) => `${data.icons.nodes}${kind}/${picture}.png`;
+
 export const plural = (key, n) => {
   const forms = words.ui[key];
   return fill(forms[plurals.select(n)] ?? forms.other, { n: numbers.format(n) });
@@ -184,6 +186,11 @@ export function availabilityOf(owners, civs) {
   return having.length <= lacking.length ? { has: having } : { lacks: lacking };
 }
 
+export function pictureOf(node, counts) {
+  const [picture] = [...counts].reduce((best, each) => (each[1] > best[1] ? each : best));
+  return { kind: node.use_type.toLowerCase(), picture, reach: /^(Regional|Unique)/.exec(node.node_type)?.[1].toLowerCase() ?? "common" };
+}
+
 export function missingText(set) {
   const codes = Object.keys(set.languages);
   const reference = set.text[codes[0]];
@@ -206,13 +213,17 @@ function refresh(current, techtree, trees, strings) {
   const civs = Object.keys(techtree.civs).sort();
   const nodes = new Map();
   const owners = new Map();
+  const pictures = new Map();
   civs.forEach((civ, i) => {
     for (const node of [...trees[i].buildings, ...trees[i].units_techs]) {
       if (!nodes.has(node.name)) {
         nodes.set(node.name, node);
         owners.set(node.name, new Set());
+        pictures.set(node.name, new Map());
       }
       if (node.node_status !== "NotAvailable") owners.get(node.name).add(civ);
+      const counts = pictures.get(node.name);
+      if (node.use_type === nodes.get(node.name).use_type) counts.set(node.picture_index, (counts.get(node.picture_index) ?? 0) + 1);
     }
   });
   const keys = treeKeys(current.tree, "item");
@@ -225,6 +236,7 @@ function refresh(current, techtree, trees, strings) {
   const fresh = structuredClone(current);
   fresh.civs = civs;
   fresh.availability = Object.fromEntries(keys.map((key) => [key, availabilityOf(owners.get(key), civs)]));
+  fresh.pictures = Object.fromEntries(keys.map((key) => [key, pictureOf(nodes.get(key), pictures.get(key))]));
   Object.entries(current.languages).forEach(([code, settings], i) => {
     const overrides = current.overrides[code] ?? {};
     const text = (fresh.text[code] ??= {});
@@ -241,6 +253,8 @@ function refresh(current, techtree, trees, strings) {
   keys.filter((key) => key in current.availability && JSON.stringify(current.availability[key]) !== JSON.stringify(fresh.availability[key]))
     .forEach((name) => say("changed", { name }));
   keys.filter((key) => !owners.get(key).size).forEach((name) => say("nobody", { name }));
+  keys.filter((key) => JSON.stringify(current.pictures[key]) !== JSON.stringify(fresh.pictures[key]))
+    .forEach((name) => say("icon", { name, file: iconFile(fresh.pictures[name]) }));
   for (const [code, settings] of Object.entries(current.languages)) {
     for (const section of ["civs", "items"]) {
       for (const [key, name] of Object.entries(fresh.text[code][section])) {

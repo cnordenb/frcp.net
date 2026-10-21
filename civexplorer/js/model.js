@@ -3,11 +3,16 @@ import { data, ALL, setOf, size, words, nameOf, fill } from "./datahandler.js";
 export const items = [];
 export const roots = [];
 export let include = false;
+export let regional = true;
 export let matching = 0n;
 export let shared = new Set();
 
 export const setIncluded = (on) => {
   include = on;
+};
+
+export const setRegionals = (on) => {
+  regional = on;
 };
 
 function collect(nodes, parent) {
@@ -27,13 +32,13 @@ function collect(nodes, parent) {
 
 export const whole = (item) => (item.all ??= item.kids.reduce((s, kid) => s & whole(kid), item.set));
 
-export function prune(nodes) {
+export function prune(nodes, every = false, regionals = true) {
   return nodes.flatMap((node) => {
-    if (node.unique) return [];
-    const kids = prune(node.kids ?? []);
+    if ((node.unique && !every) || (!regionals && data.pictures[node.item]?.reach === "regional")) return [];
+    const kids = prune(node.kids ?? [], every, regionals);
     const rule = node.item && data.availability[node.item];
     const civs = rule ? size(setOf(rule)) : 0;
-    if (!kids.length && (node.group || civs === 1 || civs === data.civs.length)) return [];
+    if (!kids.length && (node.group || (!every && (civs === 1 || civs === data.civs.length)))) return [];
     return [{ ...node, kids }];
   });
 }
@@ -42,7 +47,7 @@ export function rebuild() {
   const chosen = new Map(items.map((item) => [item.path, item.chosen]));
   items.length = 0;
   roots.length = 0;
-  collect(include ? data.tree : prune(data.tree), null);
+  collect(prune(data.tree, include, regional), null);
   items.forEach(whole);
   for (const item of items) item.chosen = chosen.get(item.path) ?? null;
 }

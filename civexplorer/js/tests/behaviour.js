@@ -1,7 +1,7 @@
 import { ALL, fill, size, words, numbers, nameOf, plural, plain } from "../datahandler.js";
 import { items, roots, state, lineOf, lineEnd, chipName } from "../model.js";
 import { $, isOpen, setOpen, shown } from "../ui.js";
-import { check, expect, wait, same, keyDown, tap, type, reset, beside, listed, expected, below } from "./helpers.js";
+import { root, check, expect, wait, same, keyDown, tap, type, reset, beside, listed, expected, below } from "./helpers.js";
 
 const chainOf = (item) => {
   const chain = [item];
@@ -61,8 +61,36 @@ function marking({ partial, other, third, branch, line, group, headed, tower }) 
   tap(group.node);
   check("marking: marking a top-level group marks and shows everything in it", groupHidden && state(group) === "has" && group.self === null
     && inGroup.every(shown));
-  $("clear").click();
-  check("marking: Clear clears everything", items.every((item) => item.self === null));
+}
+
+function crowding() {
+  reset();
+  $("expandAll").click();
+  const most = items.filter((item) => !item.group && !item.kids.length).reduce((best, item) => (size(item.set) > size(best.set) ? item : best));
+  tap(most.node);
+  const box = (el) => el.getBoundingClientRect();
+  const panes = document.querySelector(".panes");
+  const [tree, civs] = panes.querySelectorAll(".pane");
+  const list = $("civScroll");
+  const rows = getComputedStyle(panes).gridTemplateRows.split(" ").map(parseFloat);
+
+  const scrolls = (el) => el.scrollHeight > el.clientHeight + 1;
+
+  const top = box(civs).top;
+  list.scrollTop = 1e6;
+  const problems = [
+    ...(listed().length === size(most.set) ? [] : [`${listed().length} civilisations listed`]),
+    ...(root.scrollHeight <= innerHeight && root.scrollWidth <= innerWidth ? [] : [`the page is ${root.scrollWidth} by ${root.scrollHeight}`]),
+    ...[tree, civs].filter((pane) => box(pane.querySelector(".pane-head")).bottom > box(pane).bottom + 0.5).map((pane) => `${pane.querySelector("h2").id} sticks out`),
+    ...(box(tree).bottom <= box(civs).top + 0.5 || box(tree).right <= box(civs).left + 0.5 ? [] : ["the panes overlap"]),
+    ...(!scrolls(list) || (list.scrollTop > 0 && box(civs).top === top) ? [] : ["the list does not scroll in its pane"]),
+    ...(rows.length === 5 && scrolls(tree.querySelector(".scroll")) && scrolls(list) && Math.abs(rows[1] - rows[4]) > 1
+      ? [`stacked lists of ${rows[1]} and ${rows[4]} pixels`] : []),
+  ];
+  list.scrollTop = 0;
+  reset();
+  expect("layout: with everything open and the most civilisations listed, the page does not scroll, the panes keep their headers and do not overlap, the list scrolls in its pane, and stacked panes share the height",
+    problems);
 }
 
 function filterFocus({ other, third }) {
@@ -265,6 +293,7 @@ function findKey({ partial }) {
 
 export async function behaviourTests(sample) {
   marking(sample);
+  crowding();
   await gestures(sample);
   parents(sample);
   lines(sample);

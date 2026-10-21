@@ -33,6 +33,7 @@
       "options": "選項",
       "includeAll": "包含特殊與通用項目",
       "includeHint": "同時顯示特殊單位、科技和建築，所有文明都擁有的項目，以及只有一個文明擁有的項目。",
+      "includeRegional": "包含區域項目",
       "simple": "簡易介面",
       "civView": "文明檢視：",
       "viewList": "清單",

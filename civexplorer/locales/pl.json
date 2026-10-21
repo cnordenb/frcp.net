@@ -43,6 +43,7 @@
       "options": "Opcje",
       "includeAll": "Uwzględnij unikalne i uniwersalne",
       "includeHint": "Pokazuje też unikalne jednostki, technologie i budynki, to, co mają wszystkie cywilizacje, oraz to, co ma tylko jedna.",
+      "includeRegional": "Uwzględnij regionalne",
       "simple": "Prosty interfejs",
       "civView": "Widok cywilizacji:",
       "viewList": "Lista",
