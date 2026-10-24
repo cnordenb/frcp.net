@@ -44,9 +44,10 @@ const STATES = [
   ...["options", "hotkeys", "about", "help", "lobby", "share", "openLink"].map((act) => [`the ${act} dialog`,
     `document.querySelector('[data-act="${act}"]').click()`]),
   ["a message box", `location.hash = "#p=nonsense"; ${UNTIL_DIALOG}`],
+  // The session's own link opens without a preview, so this one leaves out its last draw.
   ["the shared link preview", `(async () => {
     document.querySelector('[data-act="share"]').click();
-    const link = document.getElementById("shareRound").value;
+    const link = document.getElementById("shareRound").value.slice(0, -1);
     document.querySelector("dialog[open]").close();
     location.hash = link.split("#")[1];
     await ${UNTIL_DIALOG};
@@ -459,6 +460,36 @@ test("3.3.4, 3.3.6 Error Prevention: clearing the log, emptying the pool and qui
   await page.key("F9");
   await undo();
   assert.equal(await drawn(), afterDraw, "undo takes back a quickload");
+  await done(page);
+});
+
+test("3.3.4, 3.3.6 Error Prevention: a link that would replace the session asks first, and one that wouldn't opens at once", { skip }, async () => {
+  // A fresh session: Definitive Edition, every civ on and nothing drawn
+  const page = await open({ storage: { "frcp.state": { v: 1, edition: "DE", disabled: [], log: [[]] } } });
+  const dialog = () => page.eval(`document.querySelector("dialog[open]")?.id || null`);
+  const rounds = () => page.eval(`document.querySelectorAll("#drawnLog .log-round").length`);
+  const tab = () => page.eval(`document.querySelector('[role="tab"][aria-selected="true"]').id`);
+  const openLink = async (code) => {
+    await page.eval(`document.getElementById("tab-0").click(); document.getElementById("toast").textContent = ""; location.hash = "p=${code}"`);
+    await page.waitFor(`document.getElementById("toast").textContent || document.querySelector("dialog[open]")`, `the link ${code} to open`);
+  };
+  await openLink("1Cg4QBBgiAl8.yQwJK1pF");
+  assert.equal(await dialog(), null, "a link opens on a fresh session without asking");
+  assert.equal(await page.eval(`document.getElementById("enabledCount").textContent`), "Enabled: 13/18");
+  assert.equal(await tab(), "tab-1", "a link with draws opens on the Log tab");
+  await page.eval(`document.querySelector('[data-act="share"]').click()`);
+  const own = await page.eval(`document.getElementById("shareRound").value.split("#p=")[1]`);
+  await page.eval(`document.querySelector("dialog[open]").close()`);
+  const before = await rounds();
+  await openLink(own);
+  assert.equal(await dialog(), null, "the session's own link opens without asking");
+  assert.equal(await rounds(), before, "and leaves the log as it was");
+  assert.equal(await tab(), "tab-1", "and goes to the Log tab too");
+  await openLink("1Cg4QBAgiAl8");
+  assert.equal(await dialog(), "dlgPreview", "a link that would replace this round asks first");
+  await page.eval(`document.querySelector('#previewForm [type="submit"]').click()`);
+  assert.equal(await dialog(), null);
+  assert.equal(await tab(), "tab-2", "a link without draws opens on the Civ Pool tab");
   await done(page);
 });
 

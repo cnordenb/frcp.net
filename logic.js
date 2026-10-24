@@ -330,6 +330,14 @@ export function createLogic(data) {
     trimLog(s);
   }
 
+  // A link matches a session with its edition and pool whose round is the link's draws, in order. Opening it would
+  // change nothing but the log, which would gain a copy of this round.
+  function matchesLink(s, link) {
+    const draws = drawnIds(s);
+    return s.edition === link.edition && CIVS.every((c) => isOn(s, c.id) === link.enabled[c.id])
+      && draws.length === link.draws.length && draws.every((id, i) => id === link.draws[i]);
+  }
+
   // ---- Presets ----
 
   // Preset files are the desktop app's .txt files: a section of every civ's name and on (1) or off (0), one of the
@@ -387,7 +395,7 @@ export function createLogic(data) {
     emptyState, applyEdition, parseState, serialiseState, hasContent,
     isOn, poolIds, round, drawnIds, drawnCount, remainingIds, closeRound, trimLog,
     freshMax, freshLimit, recentCivs, drawCandidates, createPicker, recordDraw,
-    shareCode, parseShare, applyLink,
+    shareCode, parseShare, applyLink, matchesLink,
     presetText, parsePreset, applyPreset,
   };
 }

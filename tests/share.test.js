@@ -5,7 +5,7 @@ import { test } from "node:test";
 import { B64 } from "../logic.js";
 import { CIVS, EDITIONS, idOf, logic, makeState, namedLog } from "./helpers.js";
 
-const { shareCode, parseShare, applyLink, inEdition } = logic;
+const { shareCode, parseShare, applyLink, matchesLink, inEdition } = logic;
 const ADDRESS = "https://frcp.net/#p=";
 const link = (s, withDraws = true) => ADDRESS + shareCode(s, withDraws);
 const bitfieldLength = Math.ceil(CIVS.length / 6);
@@ -97,4 +97,25 @@ test("opening a link without draws starts an empty round", () => {
   const s = makeState({ log: [[["Celts", 1, 56]]] });
   applyLink(s, parseShare("1A__________"));
   assert.deepEqual(namedLog(s), [[["Celts", 1, 56]], []]);
+});
+
+test("a link matches the session it was copied from, and only one with its edition, pool and round", () => {
+  const s = makeState({ off: ["Wu"], log: [[["Huns", 1, 55]], [["Celts", 1, 55], ["Franks", 2, 55]]] });
+  assert.ok(matchesLink(s, parseShare(link(s))));
+  assert.ok(matchesLink(makeState(), parseShare(link(makeState()))));
+  assert.ok(!matchesLink(s, parseShare(link(s, false))), "without this round's draws");
+  const others = [
+    makeState({ edition: "HD", off: ["Wu"], log: [[["Celts", 1, 31], ["Franks", 2, 31]]] }),
+    makeState({ off: ["Wu", "Huns"], log: [[["Celts", 1, 54], ["Franks", 2, 54]]] }),
+    makeState({ off: [], log: [[["Celts", 1, 56], ["Franks", 2, 56]]] }),
+    makeState({ off: ["Wu"], log: [[["Franks", 1, 55], ["Celts", 2, 55]]] }),
+    makeState({ off: ["Wu"], log: [[["Celts", 1, 55]]] }),
+    makeState({ off: ["Wu"], log: [[["Celts", 1, 55], ["Franks", 2, 55], ["Huns", 3, 55]]] }),
+  ];
+  for (const other of others) assert.ok(!matchesLink(s, parseShare(link(other))), JSON.stringify(namedLog(other)));
+});
+
+test("a link drawn with a civ that is now off doesn't match, as opening it would drop that draw", () => {
+  const s = makeState({ off: ["Wu"], log: [[["Celts", 1, 56], ["Wu", 2, 56]]] });
+  assert.ok(!matchesLink(s, parseShare(link(s))));
 });

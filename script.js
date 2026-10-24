@@ -496,10 +496,10 @@ import { MersenneTwister, createLogic } from "./logic.js";
   // or has a row. The pressed text button is among them, as the phone layout's Draw Civ tab has no text buttons.
   const TAB_IMAGES = [[], ["ui/scrollbar_3slice", "ui/scrollbar_knob", "ui/button_pressed", "ui/button_pressed_9slice",
     "civ/civicon_atlas"], ["ui/button_pressed", "ui/button_pressed_9slice"]];
-  function setTab(i) {
+  function setTab(i, { silent = false } = {}) {
     if (i === ui.tab) return;
     ui.tab = i;
-    sfx("tab");
+    if (!silent) sfx("tab");
     preload(...TAB_IMAGES[i]);
     render();
     // On a phone, simple mode's panel scrolls, and the three tabs share it, so each tab opens at its top.
@@ -513,7 +513,7 @@ import { MersenneTwister, createLogic } from "./logic.js";
 
   // logic.js writes and reads the codes.
   const shareUrl = (withDraws) => location.href.split("#")[0] + "#p=" + logic.shareCode(state, withDraws);
-  const { parseShare } = logic;
+  const { parseShare, matchesLink } = logic;
 
   function applyLink(link) {
     beforeReplace();
@@ -521,10 +521,22 @@ import { MersenneTwister, createLogic } from "./logic.js";
     commit();
   }
 
+  // A loaded link shows what it brought: its draws on the Log tab or, without any, its pool on the Civ Pool tab.
+  function showLink(link) {
+    toast("Loaded the shared link");
+    setTab(link.draws.length ? 1 : 2, { silent: true });
+  }
+
+  // A link with this session's pool and round is already open, so it opens without asking and leaves the log and
+  // the undo history as they are.
   function offerLink(link) {
+    if (matchesLink(state, link)) {
+      showLink(link);
+      return;
+    }
     if (!hasContent(state)) {
       applyLink(link);
-      toast("Loaded the shared link");
+      showLink(link);
       return;
     }
     openPreview(link);
@@ -1794,10 +1806,11 @@ import { MersenneTwister, createLogic } from "./logic.js";
       e.preventDefault();
       $("dlgPreview").close();
       if (!pendingLink) return;
-      applyLink(pendingLink);
+      const link = pendingLink;
       pendingLink = null;
+      applyLink(link);
       sfx("button");
-      toast("Loaded the shared link");
+      showLink(link);
     });
 
     // Simple mode has buttons in place of swipes, and its menus and tooltips work from the keyboard.
