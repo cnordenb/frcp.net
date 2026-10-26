@@ -1,5 +1,3 @@
-NB: Civ Explorer has its own [github repository](https://github.com/cnordenb/aoe2civexplorer/).
-
 # [frcp.net](https://frcp.net/)
 
 <img width="576" height="620" alt="image" src="https://github.com/user-attachments/assets/b77ce274-c839-4a3d-9f37-26debb78099d" />
@@ -25,8 +23,6 @@ Fresh Random Civ Picker in the browser. Ported to HTML, CSS and JavaScript from 
 - GitHub Actions runs them on every push.
 
 ## Acknowledgements
-
-Aoe2techtree © HSZemi. frcp.net/civpicker uses aoe2techtree for localisation and tech tree data, permissible under its [MIT license](https://github.com/SiegeEngineers/aoe2techtree/blob/master/LICENSE).
 
 Age of Empires II © Microsoft Corporation. Fresh Random Civ Picker ([frcp.net](https://frcp.net/)) was created under Microsoft's "[Game Content Usage Rules](https://www.xbox.com/en-US/developers/rules)" using assets from Age of Empires II: The Age of Kings, Age of Empires II: HD Edition, and Age of Empires II: Definitive Edition, and it is not endorsed by or affiliated with Microsoft.
 
