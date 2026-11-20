@@ -12,7 +12,6 @@ Fresh Random Civ Picker solves this problem completely, no custom pool toggling 
 Why as a website? Let's face it, no one wants to download and install stuff if they don't have to.
 
 
-Fresh Random Civ Picker in the browser. Ported to HTML, CSS and JavaScript from the [C++ Windows GUI version](https://github.com/cnordenb/Fresh-Random-Civ-Picker_GUI).
 
 ## Using UI elements from Age of Empires 2.
 - Sourced from all 3 editions of the game using both asset files and screenshots
