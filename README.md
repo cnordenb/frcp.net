@@ -3,6 +3,14 @@
 <img width="576" height="620" alt="image" src="https://github.com/user-attachments/assets/b77ce274-c839-4a3d-9f37-26debb78099d" />
 
 
+## But why?
+
+In Age of Empires II: Definitive Edition, there are 56 and counting civilisations. You can pick random in the game, but not without the risk of having to replay the same civ twice in the same session or even twice in a row. Why would you want to replay a civ during the day when there's over half a hundred unique civs in the game you paid for. Why should you have to give up the adventure of randomness to experience variety? You shouldn't.
+
+Fresh Random Civ Picker solves this problem completely, no custom pool toggling here and there, just draw and forget. Both fresh and random, guaranteed.
+
+Why as a website? Let's face it, no one wants to download and install stuff if they don't have to.
+
 
 Fresh Random Civ Picker in the browser. Ported to HTML, CSS and JavaScript from the [C++ Windows GUI version](https://github.com/cnordenb/Fresh-Random-Civ-Picker_GUI).
 
